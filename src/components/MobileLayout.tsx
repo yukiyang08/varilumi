@@ -1,7 +1,7 @@
 import { FUNCTIONS, kelvinLabel } from '../engine/functions';
 import type { LightState } from '../engine/switchEngine';
 import { SCENES, type LightGroupDef, type SceneDef } from '../scenes';
-import { FunctionPicker, HowTo, MoreSettings, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
+import { FunctionPicker, HowTo, MoreSettings, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
 import { SceneView } from './SceneView';
 import { TUT_DONE, TUT_STEPS } from './Tutorial';
 import { SwitchHint, WallSwitch } from './WallSwitch';
@@ -16,6 +16,9 @@ interface Props {
   weights: Record<string, number>;
   onConfig: (p: Partial<GroupConfig>) => void;
   onPress: () => void;
+  onQuick: () => void;
+  onSlow: () => void;
+  busy: boolean;
   fixtures: React.ReactNode;
   tut: { step: number; onSkip: () => void; onClose: () => void } | null;
   after: React.ReactNode;
@@ -84,8 +87,8 @@ export function MobileLayout(p: Props) {
             </button>
           </div>
         ) : null}
-        <div className="m-dock-row">
-          <p className="m-dock-text">
+        {!p.tut && (
+          <p className="m-hint">
             <span className="m-dock-name">
               {p.group.name}・{def.name}
             </span>
@@ -93,6 +96,9 @@ export function MobileLayout(p: Props) {
               <SwitchHint on={state.switchOn} offFor={state.offFor} />
             </span>
           </p>
+        )}
+        <div className="m-dock-row">
+          <QuickSlowButtons onQuick={p.onQuick} onSlow={p.onSlow} busy={p.busy} className="m-side" short />
           <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={p.onPress} label={p.group.name} compact />
         </div>
       </div>

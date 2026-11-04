@@ -206,11 +206,29 @@ interface Props {
   power: string;
   onConfig: (patch: Partial<GroupConfig>) => void;
   onPress: () => void;
+  onQuick: () => void;
+  onSlow: () => void;
+  busy: boolean;
   tutorial?: React.ReactNode;
   fixtures?: React.ReactNode;
 }
 
-export function ControlPanel({ group, cfg, state, power, onConfig, onPress, tutorial, fixtures }: Props) {
+export function QuickSlowButtons({ onQuick, onSlow, busy, className, short }: { onQuick: () => void; onSlow: () => void; busy: boolean; className?: string; short?: boolean }) {
+  return (
+    <>
+      <button type="button" className={`${className} quick`} onClick={onQuick} disabled={busy}>
+        <b>⚡ 快切</b>
+        <small>{short ? '換下一段' : '關了馬上開・換下一段'}</small>
+      </button>
+      <button type="button" className={`${className} slow`} onClick={onSlow} disabled={busy}>
+        <b>🐢 慢切</b>
+        <small>{short ? '回到預設' : '關 2 秒再開・回到預設'}</small>
+      </button>
+    </>
+  );
+}
+
+export function ControlPanel({ group, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, tutorial, fixtures }: Props) {
   return (
     <section className="panel" aria-label={`${group.name}控制`}>
       <div className="panel-block switch-block">
@@ -218,6 +236,9 @@ export function ControlPanel({ group, cfg, state, power, onConfig, onPress, tuto
         <div className="switch-row">
           <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} label={group.name} />
           <StatusView cfg={cfg} state={state} power={power} />
+        </div>
+        <div className="shortcuts">
+          <QuickSlowButtons onQuick={onQuick} onSlow={onSlow} busy={busy} className="btn" />
         </div>
       </div>
       <div className="panel-block">

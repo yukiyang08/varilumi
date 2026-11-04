@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FUNCTIONS, kelvinLabel } from './engine/functions';
+import { FUNCTIONS, QUICK_MS, kelvinLabel } from './engine/functions';
 import { SwitchEngine, type LightState } from './engine/switchEngine';
 import { colorWeights } from './render/compositor';
 import { SCENES, powerText, type FixtureId, type LightGroupDef, type SceneDef } from './scenes';
@@ -74,6 +74,7 @@ export default function App() {
   const [productData, setProducts] = useState<ProductData | null>(null);
   const [tutStep, setTutStep] = useState<number | null>(() => (store.get(TUT_KEY) ? null : 0));
   const [presses, setPresses] = useState(0);
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
 
   // animation clock + LED soft-start smoothing + usage tracking
   const [now, setNow] = useState(() => performance.now());
@@ -149,6 +150,30 @@ export default function App() {
     },
     [advanceTutorial],
   );
+
+  /** ⚡快切 / 🐢慢切 buttons: flip the switch off, then on again after `gap` ms, exactly as a hand would. */
+  const runSequence = useCallback(
+    (id: string, gap: number) => {
+      const e = engines.current[id];
+      const st = e.state(performance.now());
+      setBusy((b) => ({ ...b, [id]: true }));
+      const done = () => {
+        press(id);
+        setBusy((b) => ({ ...b, [id]: false }));
+      };
+      if (st.switchOn) {
+        press(id);
+        setTimeout(done, gap);
+      } else {
+        // already off: for 慢切 make sure the off time has passed the quick window
+        const wait = gap >= QUICK_MS && st.offFor !== null && st.offFor < gap ? gap - st.offFor : 0;
+        setTimeout(done, wait);
+      }
+    },
+    [press],
+  );
+  const onQuick = () => runSequence(group.id, 350);
+  const onSlow = () => runSequence(group.id, QUICK_MS + 300);
 
   const configure = useCallback((id: string, patch: Partial<GroupConfig>) => {
     const e = engines.current[id];
@@ -267,6 +292,9 @@ export default function App() {
           weights={weights}
           onConfig={(p) => configure(group.id, p)}
           onPress={() => press(group.id)}
+          onQuick={onQuick}
+          onSlow={onSlow}
+          busy={!!busy[group.id]}
           fixtures={fixtures}
           tut={tut}
           after={
@@ -299,7 +327,7 @@ export default function App() {
         <h1>
           不用換開關，<span className="grad">按一下就能調光調色</span>
         </h1>
-        <p>選一個功能，連按兩下牆上的開關，看看燈光怎麼變。</p>
+        <p>選一個功能，按下牆上的開關（或快切、慢切按鈕），看看燈光怎麼變。</p>
       </div>
 
       <nav className="scene-tabs" aria-label="場景">
@@ -328,6 +356,9 @@ export default function App() {
             power={power}
             onConfig={(p) => configure(group.id, p)}
             onPress={() => press(group.id)}
+            onQuick={onQuick}
+            onSlow={onSlow}
+            busy={!!busy[group.id]}
             tutorial={tut ? <Tutorial step={tut.step} onSkip={tut.onSkip} onClose={tut.onClose} /> : null}
             fixtures={fixtures}
           />
