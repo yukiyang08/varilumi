@@ -65,14 +65,23 @@ a { color: var(--brand-ink); }
   .layout { grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr); align-items: start; }
   .stage { position: sticky; top: 12px; }
 }
-@media (max-width: 959px) {
-  .stage { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-top: 6px; margin-inline: -16px; padding-inline: 16px; }
-  body::before { content: ''; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+/* phones / tablets in portrait: scene stays visible while scrolling, capped to a third of the screen */
+@media (max-width: 959px) and (orientation: portrait) {
+  .stage { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 6px 8px; margin-inline: -16px; padding-inline: 16px; }
+  .stage .scene { max-height: 34vh; margin-inline: auto; }
   .stage .disclaimer { display: none; }
+  body::before { content: ''; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+}
+/* phones in landscape: side-by-side, scene pinned on the left at screen height */
+@media (max-width: 959px) and (orientation: landscape) {
+  .layout { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; }
+  .stage { position: sticky; top: 8px; }
+  .stage .scene { max-height: calc(100vh - 24px); }
+  .hero, .stage .disclaimer { display: none; }
 }
 
-.scene { position: relative; width: 100%; border-radius: var(--radius); overflow: hidden; background: #1a1714; box-shadow: var(--shadow); }
-.scene-canvas { display: block; width: 100%; height: 100%; }
+.scene { position: relative; width: 100%; max-width: 100%; border-radius: var(--radius); overflow: hidden; background: #1a1714; box-shadow: var(--shadow); }
+.scene-canvas { display: block; width: 100%; height: 100%; object-fit: cover; }
 .scene-msg { position: absolute; inset: 0; display: grid; place-items: center; color: #e9e2d7; font-size: 14px; background: rgba(20, 16, 12, 0.6); }
 .disclaimer { color: var(--muted); font-size: 12px; margin: 8px 2px 0; }
 

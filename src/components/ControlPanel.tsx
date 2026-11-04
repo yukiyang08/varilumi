@@ -58,6 +58,52 @@ export function ControlPanel({ group, cfg, state, busy, onConfig, onPress, onQui
 
   return (
     <section className="panel" aria-label={`${group.name}控制`}>
+      <div className="panel-block switch-block">
+        {tutorial}
+        <div className="switch-row">
+          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} disabled={busy} label={group.name} />
+          <div className="status">
+            <div className={`readout ${lit ? '' : 'dim'}`}>
+              <span className="big">{state.switchOn ? (state.flashing ? '✦' : `${pct(state.level)}%`) : '關'}</span>
+              <span className="k">
+                <i style={{ background: kelvinSwatch(state.kelvin) }} />
+                {state.kelvin}K {kelvinLabel(state.kelvin)}
+              </span>
+            </div>
+            {def.mode === 'steps' ? (
+              <ol className="steps" aria-label="段數">
+                {def.steps.map((s, i) => (
+                  <li key={i} className={state.switchOn && i === state.stepIndex ? 'cur' : ''}>
+                    <span className="dot" style={{ background: kelvinSwatch(s.kelvin ?? cfg.kelvin), opacity: 0.3 + 0.7 * Math.sqrt(s.level) }} />
+                    {s.label}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="ramp" aria-label="無段亮度">
+                <div className="ramp-bar" style={{ background: `linear-gradient(90deg, #2a2723, ${kelvinSwatch(state.kelvin)})` }}>
+                  <span className="ramp-marker" style={{ left: `${(state.switchOn ? barPos(state.level) : 0) * 100}%` }} />
+                </div>
+                <div className="ramp-ends">
+                  <span>1% 夜燈</span>
+                  <span>{state.ramping ? `漸亮中 ${(state.rampProgress * 6).toFixed(1)} / 6 秒` : ''}</span>
+                  <span>100%</span>
+                </div>
+              </div>
+            )}
+            <p className="event" aria-live="polite">{eventText(state, cfg)}</p>
+          </div>
+        </div>
+        <div className="shortcuts">
+          <button type="button" className="btn quick" onClick={onQuick} disabled={busy}>
+            ⚡ 快切<small>關了馬上開</small>
+          </button>
+          <button type="button" className="btn slow" onClick={onSlow} disabled={busy}>
+            🐢 慢切<small>關超過 2 秒再開</small>
+          </button>
+        </div>
+      </div>
+
       <div className="panel-block">
         <h3 className="block-title">選一個功能</h3>
         <div className="fn-cards" role="radiogroup" aria-label="開關調光功能">
@@ -109,52 +155,6 @@ export function ControlPanel({ group, cfg, state, busy, onConfig, onPress, onQui
               <small>慢切開燈時，回到上次關燈前的{def.mode === 'steps' && def.family === '調色型' ? '色溫' : '亮度'}</small>
             </span>
           </label>
-        </div>
-      </div>
-
-      <div className="panel-block switch-block">
-        {tutorial}
-        <div className="switch-row">
-          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} disabled={busy} label={group.name} />
-          <div className="status">
-            <div className={`readout ${lit ? '' : 'dim'}`}>
-              <span className="big">{state.switchOn ? (state.flashing ? '✦' : `${pct(state.level)}%`) : '關'}</span>
-              <span className="k">
-                <i style={{ background: kelvinSwatch(state.kelvin) }} />
-                {state.kelvin}K {kelvinLabel(state.kelvin)}
-              </span>
-            </div>
-            {def.mode === 'steps' ? (
-              <ol className="steps" aria-label="段數">
-                {def.steps.map((s, i) => (
-                  <li key={i} className={state.switchOn && i === state.stepIndex ? 'cur' : ''}>
-                    <span className="dot" style={{ background: kelvinSwatch(s.kelvin ?? cfg.kelvin), opacity: 0.3 + 0.7 * Math.sqrt(s.level) }} />
-                    {s.label}
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <div className="ramp" aria-label="無段亮度">
-                <div className="ramp-bar" style={{ background: `linear-gradient(90deg, #2a2723, ${kelvinSwatch(state.kelvin)})` }}>
-                  <span className="ramp-marker" style={{ left: `${(state.switchOn ? barPos(state.level) : 0) * 100}%` }} />
-                </div>
-                <div className="ramp-ends">
-                  <span>1% 夜燈</span>
-                  <span>{state.ramping ? `漸亮中 ${(state.rampProgress * 6).toFixed(1)} / 6 秒` : ''}</span>
-                  <span>100%</span>
-                </div>
-              </div>
-            )}
-            <p className="event" aria-live="polite">{eventText(state, cfg)}</p>
-          </div>
-        </div>
-        <div className="shortcuts">
-          <button type="button" className="btn quick" onClick={onQuick} disabled={busy}>
-            ⚡ 快切<small>關了馬上開</small>
-          </button>
-          <button type="button" className="btn slow" onClick={onSlow} disabled={busy}>
-            🐢 慢切<small>關超過 2 秒再開</small>
-          </button>
         </div>
       </div>
 
