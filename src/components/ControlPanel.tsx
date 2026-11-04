@@ -69,7 +69,7 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
         </div>
         <p className="fn-sum-line">
           {def.needDesc}
-          <span className="fn-official">　{def.family}・{def.name}</span>
+          <span className="fn-official">　{def.family}</span>
         </p>
       </div>
     );
@@ -86,7 +86,6 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
             <span className="fn-sum">{f.needDesc}</span>
             <span className="fn-official">
               <span className={`badge ${f.family === '調光型' ? 'dim' : 'tune'}`}>{f.family}</span>
-              {f.name}
             </span>
           </button>
         );

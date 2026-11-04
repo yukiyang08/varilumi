@@ -17,7 +17,7 @@ export interface FunctionDef {
   id: FunctionId;
   /** official Varilumi name, shown small */
   name: string;
-  /** plain-language name, shown big */
+  /** short name shown big (官網的叫法，去掉「經典」) */
   plainName: string;
   /** the need a visitor would say in their own words */
   need: string;
@@ -46,7 +46,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
   'four-step': {
     id: 'four-step',
     name: '經典四段調光',
-    plainName: '四段亮度',
+    plainName: '四段調光',
     need: '簡單調亮調暗',
     needDesc: '按一下開關就換一段：亮 → 半亮 → 微亮 → 小夜燈',
     family: '調光型',
@@ -64,7 +64,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
   stepless: {
     id: 'stepless',
     name: '經典無段調光',
-    plainName: '任意亮度',
+    plainName: '無段調光',
     need: '亮度想微調到剛好',
     needDesc: '燈會慢慢變亮，喜歡哪個亮度就停在哪裡',
     family: '調光型',
@@ -77,7 +77,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
   'tri-color-night': {
     id: 'tri-color-night',
     name: '三色一夜光',
-    plainName: '三種光色＋小夜燈',
+    plainName: '三色一夜光',
     need: '白光、黃光都想要',
     needDesc: '白光讀書做事、黃光放鬆，最後一段是小夜燈',
     family: '調色型',

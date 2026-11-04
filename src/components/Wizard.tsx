@@ -87,7 +87,7 @@ export function Wizard(p: Props) {
                 </span>
                 <FnAnim id={id} />
                 <span className="need-name">
-                  {f.plainName}・<span>{f.name}</span>
+                  {f.plainName}・<span>{f.family}</span>
                 </span>
               </button>
             );
