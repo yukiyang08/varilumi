@@ -1,15 +1,15 @@
 {
   "layers": {
     "base": {
-      "meanLum": 0.10687
+      "meanLum": 0.10636
     },
     "cove_3000": {
-      "meanLum": 1.25194
+      "meanLum": 1.25243
     },
     "cove_6000": {
-      "meanLum": 1.25849
+      "meanLum": 1.25624
     }
   },
-  "width": 600,
-  "height": 400
+  "width": 1200,
+  "height": 800
 }
