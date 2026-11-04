@@ -1,0 +1,5 @@
+node_modules
+dist
+*.exr
+blender/out
+.DS_Store
