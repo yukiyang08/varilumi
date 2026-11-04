@@ -31,7 +31,8 @@ def set_group(name, on, kelvin=4000):
             item.data.node_tree.nodes["Blackbody"].inputs["Temperature"].default_value = kelvin
         else:  # emissive material
             nt = item.node_tree
-            nt.nodes["Emission"].inputs["Strength"].default_value = item["base_strength"] if on else 0.0
+            target = nt.nodes[item["strength_node"]].inputs[1] if "strength_node" in item else nt.nodes["Emission"].inputs["Strength"]
+            target.default_value = item["base_strength"] if on else 0.0
             nt.nodes["Blackbody"].inputs["Temperature"].default_value = kelvin
 
 

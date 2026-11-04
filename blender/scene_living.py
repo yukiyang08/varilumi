@@ -90,11 +90,12 @@ def build():
     C.window_with_curtains(-W / 2, 2.7, 1.4, 1.6, 1.7, H)
 
     # ---- fixtures
-    for i, (x, y) in enumerate([(-1.2, 2.85), (0, 2.85), (1.2, 2.85), (-1.2, 3.85), (0, 3.85), (1.2, 3.85)]):
+    for i, (x, y) in enumerate([(-1.45, 2.85), (0, 2.85), (1.45, 2.85), (-1.45, 3.85), (0, 3.85), (1.45, 3.85)]):
         C.recessed_light(f"Rec{i}", x, y, H, "recessed")
     C.track_rail("TrackRail", -0.9, 0.9, D - 0.8, H)
     for i, x in enumerate((-0.42, 0.42)):
         C.track_head(f"Track{i}", (x, D - 0.8, H - 0.12), (x * 0.55, D - 0.03, 1.6), "track")
 
+    C.cut_ceiling_holes(H)
     C.world((0.004, 0.005, 0.009), 1.0)
     C.camera((0.35, 0.75, 1.30), (0.0, D, 1.45), lens=16.0)

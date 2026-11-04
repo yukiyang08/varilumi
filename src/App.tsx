@@ -7,6 +7,7 @@ import { SceneView } from './components/SceneView';
 import { ControlPanel, type GroupConfig } from './components/ControlPanel';
 import { ProductCards, type ProductData } from './components/ProductCards';
 import { Tutorial } from './components/Tutorial';
+import { MobileLayout } from './components/MobileLayout';
 import { switchFeedback } from './feedback';
 
 const TUT_KEY = 'varilumi-tutorial-done';
@@ -28,6 +29,18 @@ const store = {
 };
 
 const ALL_GROUPS = SCENES.flatMap((s) => s.groups);
+const MOBILE_QUERY = '(max-width: 959px) and (orientation: portrait)';
+
+function useIsMobile() {
+  const [m, setM] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(MOBILE_QUERY).matches);
+  useEffect(() => {
+    const mq = matchMedia(MOBILE_QUERY);
+    const on = () => setM(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return m;
+}
 
 export default function App() {
   const [sceneId, setSceneId] = useState<SceneDef['id']>('living');
@@ -43,7 +56,7 @@ export default function App() {
     Object.fromEntries(ALL_GROUPS.map((g) => [g.id, { ...g.defaults }])),
   );
   const [busy, setBusy] = useState<Record<string, boolean>>({});
-  const [products, setProducts] = useState<ProductData | null>(null);
+  const [productData, setProducts] = useState<ProductData | null>(null);
   const [tutStep, setTutStep] = useState<number | null>(() => (store.get(TUT_KEY) ? null : 0));
 
   // animation clock
@@ -142,6 +155,84 @@ export default function App() {
 
   const cfg = cfgs[group.id];
   const state = states[group.id];
+  const isMobile = useIsMobile();
+
+  const tutorial =
+    tutStep !== null ? (
+      <Tutorial
+        step={tutStep}
+        onSkip={() => {
+          store.set(TUT_KEY, '1');
+          setTutStep(null);
+        }}
+        onClose={() => setTutStep(null)}
+      />
+    ) : null;
+
+  const products = <ProductCards data={productData} fixture={group.id} fixtureName={group.name} functionId={cfg.functionId} />;
+  const footer = (
+    <footer className="foot">
+      <p>
+        想了解更多功能（兩色一調光、四色燈、客製分區點燈…）請看
+        <a href="https://www.varilumi.com/function-selection-guide/" target="_blank" rel="noopener">
+          開關調光燈選購攻略
+        </a>
+        ，或洽飛利明 LINE 客服。
+      </p>
+      <p className="copy">© 飛利明 VariLumi・台灣設計製造・開關調光技術多國專利</p>
+    </footer>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="app is-mobile">
+        <header className="top m-top">
+          <a className="brand" href="https://www.varilumi.com/" target="_blank" rel="noopener">
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="飛利明 Varilumi" width="34" height="34" />
+            <span>
+              <b>開關調光體驗室</b>
+              <small>不用換開關，按一下就能調光調色</small>
+            </span>
+          </a>
+          <button type="button" className="link help" onClick={() => setTutStep(0)}>
+            ？教學
+          </button>
+        </header>
+        <MobileLayout
+          scene={scene}
+          onScene={setSceneId}
+          group={group}
+          onGroup={setGroupId}
+          states={states}
+          cfg={cfg}
+          busy={!!busy[group.id]}
+          weights={weights}
+          onConfig={(p) => configure(group.id, p)}
+          onPress={() => press(group.id)}
+          onQuick={() => runSequence(group.id, 350)}
+          onSlow={() => runSequence(group.id, QUICK_MS + 300)}
+          tut={
+            tutStep === null
+              ? null
+              : {
+                  step: tutStep,
+                  onSkip: () => {
+                    store.set(TUT_KEY, '1');
+                    setTutStep(null);
+                  },
+                  onClose: () => setTutStep(null),
+                }
+          }
+          after={
+            <>
+              {products}
+              {footer}
+            </>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -209,34 +300,13 @@ export default function App() {
             onPress={() => press(group.id)}
             onQuick={() => runSequence(group.id, 350)}
             onSlow={() => runSequence(group.id, QUICK_MS + 300)}
-            tutorial={
-              tutStep !== null ? (
-                <Tutorial
-                  step={tutStep}
-                  onSkip={() => {
-                    store.set(TUT_KEY, '1');
-                    setTutStep(null);
-                  }}
-                  onClose={() => setTutStep(null)}
-                />
-              ) : null
-            }
+            tutorial={tutorial}
           />
         </div>
       </main>
 
-      <ProductCards data={products} fixture={group.id} fixtureName={group.name} functionId={cfg.functionId} />
-
-      <footer className="foot">
-        <p>
-          想了解更多功能（兩色一調光、四色燈、客製分區點燈…）請看
-          <a href="https://www.varilumi.com/function-selection-guide/" target="_blank" rel="noopener">
-            開關調光燈選購攻略
-          </a>
-          ，或洽飛利明 LINE 客服。
-        </p>
-        <p className="copy">© 飛利明 VariLumi・台灣設計製造・開關調光技術多國專利</p>
-      </footer>
+      {products}
+      {footer}
     </div>
   );
 }

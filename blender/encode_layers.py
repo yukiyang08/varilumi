@@ -28,6 +28,25 @@ def read_exr(path):
     return np.flipud(px.reshape(h, w, 4)[:, :, :3])
 
 
+def _gauss_fft(img, sigma):
+    """Gaussian blur via FFT (separable kernel applied in the frequency domain)."""
+    h, w, _ = img.shape
+    fy = np.fft.fftfreq(h)[:, None]
+    fx = np.fft.fftfreq(w)[None, :]
+    k = np.exp(-2 * (np.pi ** 2) * (sigma ** 2) * (fx ** 2 + fy ** 2))
+    out = np.empty_like(img)
+    for c in range(3):
+        out[:, :, c] = np.real(np.fft.ifft2(np.fft.fft2(img[:, :, c]) * k))
+    return np.clip(out, 0, None)
+
+
+def add_bloom(lin):
+    """Lens glow around bright lamps. Pure linear op (no threshold), so layers still add up exactly."""
+    w = lin.shape[1]
+    s1, s2 = w * 0.004, w * 0.02
+    return lin * 0.955 + 0.03 * _gauss_fft(lin, s1) + 0.015 * _gauss_fft(lin, s2)
+
+
 def encode(lin):
     lin = np.clip(lin, 0, None)
     y = lin / (1.0 + lin)
@@ -44,7 +63,7 @@ def main():
         if not f.endswith(".exr") or f == "check.exr":
             continue
         name = f[:-4]
-        lin = read_exr(os.path.join(src, f))
+        lin = add_bloom(read_exr(os.path.join(src, f)))
         lum = float((lin @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)).mean())
         im = Image.fromarray(encode(lin))
         if width and im.width != width:

@@ -173,10 +173,56 @@ def sphere(name, r, loc, scale=(1, 1, 1), mat=None, sub=3):
     return o
 
 
+def lathe(name, profile, loc, mat=None, segments=72):
+    """Revolve a (radius, z) profile around the Z axis (z relative to loc). Used for fixture bezels."""
+    import bmesh
+    me = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    rings = []
+    for k in range(segments):
+        a = 2 * math.pi * k / segments
+        rings.append([bm.verts.new((r * math.cos(a), r * math.sin(a), z)) for r, z in profile])
+    for k in range(segments):
+        r0, r1 = rings[k], rings[(k + 1) % segments]
+        for i in range(len(profile) - 1):
+            bm.faces.new((r0[i], r1[i], r1[i + 1], r0[i + 1]))
+    bm.to_mesh(me)
+    bm.free()
+    for poly in me.polygons:
+        poly.use_smooth = True
+    o = bpy.data.objects.new(name, me)
+    o.location = loc
+    bpy.context.scene.collection.objects.link(o)
+    if mat:
+        me.materials.append(mat)
+    return o
+
+
+CEILING_CUTS: list = []   # (x, y, radius) holes to cut in the ceiling slab
+
+
+def cut_ceiling_holes(ceil_h):
+    """Boolean the registered recessed-light holes out of the ceiling slab."""
+    if not CEILING_CUTS:
+        return
+    ceil = bpy.data.objects["Ceiling"]
+    for i, (x, y, r) in enumerate(CEILING_CUTS):
+        bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=0.2, location=(x, y, ceil_h), vertices=64)
+        c = bpy.context.active_object
+        mod = ceil.modifiers.new(f"hole{i}", "BOOLEAN")
+        mod.operation = "DIFFERENCE"
+        mod.solver = "EXACT"
+        mod.object = c
+        bpy.context.view_layer.objects.active = ceil
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+        bpy.data.objects.remove(c, do_unlink=True)
+    CEILING_CUTS.clear()
+
+
 def room(w, d, h, wall_mat, ceil_mat, floor_mat, back_mat=None):
     """Closed box room: x in [-w/2, w/2], y in [0, d], z in [0, h]. Camera sits inside near y=0."""
     plane("Floor", (w, d), (0, d / 2, 0), mat=floor_mat)
-    plane("Ceiling", (w, d), (0, d / 2, h), rot=(math.pi, 0, 0), mat=ceil_mat)
+    box("Ceiling", (w, d, 0.03), (0, d / 2, h + 0.015), ceil_mat)
     plane("WallBack", (w, h), (0, d, h / 2), rot=(math.pi / 2, 0, 0), mat=back_mat or wall_mat)
     plane("WallFront", (w, h), (0, 0, h / 2), rot=(-math.pi / 2, 0, 0), mat=wall_mat)
     plane("WallLeft", (d, h), (-w / 2, d / 2, h / 2), rot=(math.pi / 2, 0, -math.pi / 2), mat=wall_mat)
@@ -239,14 +285,71 @@ def _mats():
 
 
 def recessed_light(name, x, y, ceil_h, group, energy=9.0, cutout=0.09):
-    """9cm diffused downlight: aluminium bezel ring + frosted emissive diffuser + wide area light."""
+    """Varilumi 9cm anti-glare diffused downlight, modelled on the product photo:
+    brushed-aluminium bezel (rounded outer edge, flat face, chamfered inner lip), a short reflector wall,
+    and a frosted diffuser set ~9 mm back into the ceiling so it does not glare at an angle.
+    Light: a wide spot with soft cut-off, which paints the typical scallops on nearby walls."""
     alu, _, _ = _mats()
-    r = cutout / 2 + 0.012
-    cyl(f"{name}_ring", r, 0.008, (x, y, ceil_h - 0.004), alu, bevel=0.002)
-    em = mat_emissive(f"{name}_diffuser", group, strength=22.0)
-    cyl(f"{name}_diffuser", cutout / 2 - 0.004, 0.002, (x, y, ceil_h - 0.0085), em)
-    add_light(f"{name}_light", "AREA", (x, y, ceil_h - 0.012), (0, 0, 0), energy, group,
-              shape="DISK", size=cutout - 0.01, spread=math.radians(120))
+    R = cutout / 2                    # 0.045 for a 9cm cut-out
+    # (radius, z) profile; z = 0 is the ceiling surface, negative = below the ceiling
+    prof = [
+        (R + 0.002, 0.0),  (R + 0.0125, 0.0), (R + 0.0135, -0.0012), (R + 0.0128, -0.0028),  # outer rounded edge
+        (R + 0.010, -0.0040), (R + 0.001, -0.0042),                                           # flat face
+        (R - 0.001, -0.0034), (R - 0.0025, -0.0012),                                          # chamfered lip
+        (R - 0.0030, 0.0040), (R - 0.0034, 0.0092),                                           # reflector wall
+    ]
+    lathe(f"{name}_bezel", prof, (x, y, ceil_h), _alu_brushed())
+    CEILING_CUTS.append((x, y, R))
+    em = mat_emissive(f"{name}_diffuser", group, strength=24.0)
+    _diffuser_falloff(em)
+    cyl(f"{name}_diffuser", R - 0.0032, 0.002, (x, y, ceil_h + 0.0095), em, verts=64)
+    # housing behind the diffuser so nothing leaks through the hole
+    cyl(f"{name}_can", R + 0.003, 0.05, (x, y, ceil_h + 0.036), _mats()[1], verts=32)
+    add_light(f"{name}_light", "SPOT", (x, y, ceil_h + 0.006), (0, 0, 0), energy * 1.9, group,
+              spot_size=math.radians(100), spot_blend=0.4, shadow_soft_size=R - 0.006)
+
+
+_alu_b = None
+
+
+def _alu_brushed():
+    """Satin brushed aluminium with circular (anisotropic) highlights like the real bezel."""
+    global _alu_b
+    if _alu_b is None:
+        m = mat_principled("BezelAlu", (0.86, 0.87, 0.88), rough=0.3, metallic=0.4)
+        b = m.node_tree.nodes["Principled BSDF"]
+        b.inputs["Anisotropic"].default_value = 0.65
+        noise = m.node_tree.nodes.new("ShaderNodeTexNoise")
+        noise.inputs["Scale"].default_value = 900.0
+        bump = m.node_tree.nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = 0.03
+        m.node_tree.links.new(noise.outputs["Fac"], bump.inputs["Height"])
+        m.node_tree.links.new(bump.outputs["Normal"], b.inputs["Normal"])
+        _alu_b = m
+    return _alu_b
+
+
+def _diffuser_falloff(m):
+    """Frosted diffuser: slightly hotter centre, softer edge (as LEDs behind a diffuser look)."""
+    nt = m.node_tree
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    grad = nt.nodes.new("ShaderNodeTexGradient")
+    grad.gradient_type = "SPHERICAL"
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (1.15, 1.15, 1.15)
+    ramp = nt.nodes.new("ShaderNodeMapRange")
+    ramp.inputs["To Min"].default_value = 0.72
+    ramp.inputs["To Max"].default_value = 1.15
+    mul = nt.nodes.new("ShaderNodeMath")
+    mul.operation = "MULTIPLY"
+    em = nt.nodes["Emission"]
+    mul.inputs[1].default_value = m["base_strength"]
+    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+    nt.links.new(mp.outputs["Vector"], grad.inputs["Vector"])
+    nt.links.new(grad.outputs["Fac"], ramp.inputs["Value"])
+    nt.links.new(ramp.outputs["Result"], mul.inputs[0])
+    nt.links.new(mul.outputs["Value"], em.inputs["Strength"])
+    m["strength_node"] = mul.name
 
 
 def track_head(name, pos, target, group, energy=140.0, beam_deg=28, shell="black"):
