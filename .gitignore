@@ -4,3 +4,4 @@ dist
 blender/out
 .DS_Store
 __pycache__/
+*.tsbuildinfo
