@@ -11,9 +11,12 @@ AMBIENT: list = []                # ambient-only items (window glow, world)
 
 
 def reset_scene():
+    global _alu, _black, _white_shell, _alu_b
     bpy.ops.wm.read_factory_settings(use_empty=True)
     GROUPS.clear()
     AMBIENT.clear()
+    CEILING_CUTS.clear()
+    _alu = _black = _white_shell = _alu_b = None   # cached materials die with the old scene
 
 
 # ---------------------------------------------------------------- materials
@@ -352,22 +355,44 @@ def _diffuser_falloff(m):
     m["strength_node"] = mul.name
 
 
-def track_head(name, pos, target, group, energy=140.0, beam_deg=28, shell="black"):
-    """Cylindrical COB track spot (like the 15W zoom COB track light), aimed at `target`."""
+def track_head(name, pos, target, group, energy=62.0, beam_deg=34, shell="black"):
+    """15W COB track spot modelled on the Varilumi product photo: adapter box on the rail, short arm,
+    cylindrical head with a front bezel and a lens set ~15 mm back (anti-glare).
+    Light: a soft-edged main beam plus a faint wide spill, as real COB reflectors give."""
     alu, black, white = _mats()
     sh = black if shell == "black" else white
     rot = look_rotation(pos, target)
-    from mathutils import Vector, Matrix
-    # stem from rail down to head
-    cyl(f"{name}_stem", 0.008, 0.07, (pos[0], pos[1], pos[2] + 0.05), sh)
-    head = cyl(f"{name}_head", 0.038, 0.13, pos, sh, rot=rot, bevel=0.003)
-    # lens at the front of the head
+    from mathutils import Vector
+    rail_z = pos[2] + 0.12
+    # adapter box clipped onto the rail, and the arm down to the head's pivot
+    box(f"{name}_adapter", (0.075, 0.036, 0.03), (pos[0], pos[1], rail_z - 0.033), sh, bevel=0.004)
+    cyl(f"{name}_arm", 0.007, 0.075, (pos[0], pos[1], rail_z - 0.085), sh)
+    cyl(f"{name}_pivot", 0.011, 0.03, (pos[0], pos[1], pos[2] + 0.03), sh, rot=(0, math.pi / 2, 0))
+    # head: body + slightly larger front bezel ring
     fwd = (rot.to_matrix() @ Vector((0, 0, -1))).normalized()
-    lens_pos = Vector(pos) + fwd * 0.066
-    em = mat_emissive(f"{name}_lens", group, strength=60.0)
-    cyl(f"{name}_lens", 0.026, 0.002, tuple(lens_pos), em, rot=rot)
-    add_light(f"{name}_light", "SPOT", tuple(lens_pos + fwd * 0.01), rot, energy, group,
-              spot_size=math.radians(beam_deg), spot_blend=0.3, shadow_soft_size=0.02)
+    centre = Vector(pos) + fwd * 0.01
+    # closed rear body (driver) up to the lens, then an open front tube so the lens sits recessed
+    cyl(f"{name}_head", 0.032, 0.09, tuple(centre - fwd * 0.015), sh, rot=rot, bevel=0.003, verts=64)
+    lens_pos = centre + fwd * 0.032
+    lathe(f"{name}_tube", [(0.032, 0.0), (0.032, -0.028)], (0, 0, 0), sh).matrix_world = _frame(lens_pos, rot)
+    lathe(f"{name}_bezel", [(0.024, 0.0), (0.0335, 0.0), (0.0345, -0.004), (0.0335, -0.008), (0.026, -0.008), (0.024, 0.0)],
+          (0, 0, 0), sh).matrix_world = _frame(centre + fwd * 0.06, rot)
+    # recessed lens with a dark anti-glare baffle in front of it
+    em = mat_emissive(f"{name}_lens", group, strength=45.0)
+    cyl(f"{name}_lens", 0.021, 0.002, tuple(lens_pos + fwd * 0.002), em, rot=rot, verts=48)
+    baffle = mat_principled("Baffle", (0.015, 0.015, 0.016), rough=0.6)
+    lathe(f"{name}_baffle", [(0.0215, 0.0), (0.024, -0.028)], (0, 0, 0), baffle).matrix_world = _frame(lens_pos, rot)
+    src = tuple(lens_pos + fwd * 0.004)
+    add_light(f"{name}_light", "SPOT", src, rot, energy, group,
+              spot_size=math.radians(beam_deg), spot_blend=0.85, shadow_soft_size=0.021)
+    add_light(f"{name}_spill", "SPOT", src, rot, energy * 0.12, group,
+              spot_size=math.radians(95), spot_blend=1.0, shadow_soft_size=0.021)
+
+
+def _frame(origin, rot):
+    """World matrix placing a lathed profile (built around +Z, facing -Z = 'forward') at origin with rotation."""
+    from mathutils import Matrix
+    return Matrix.Translation(origin) @ rot.to_matrix().to_4x4()
 
 
 def track_rail(name, x0, x1, y, ceil_h):

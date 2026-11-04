@@ -94,7 +94,7 @@ def build():
         C.recessed_light(f"Rec{i}", x, y, H, "recessed")
     C.track_rail("TrackRail", -0.9, 0.9, D - 0.8, H)
     for i, x in enumerate((-0.42, 0.42)):
-        C.track_head(f"Track{i}", (x, D - 0.8, H - 0.12), (x * 0.55, D - 0.03, 1.6), "track")
+        C.track_head(f"Track{i}", (x, D - 0.8, H - 0.12), (x * 0.78, D - 0.03, 1.66), "track")
 
     C.cut_ceiling_holes(H)
     C.world((0.004, 0.005, 0.009), 1.0)
