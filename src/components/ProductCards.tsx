@@ -7,6 +7,7 @@ export interface Product {
   id: number;
   name: string;
   price: number | null;
+  priceNote?: string | null;
   image: string | null;
   link: string;
   functions: FunctionId[];
@@ -25,6 +26,7 @@ const SHOP: Record<FixtureId, string> = {
   recessed: 'https://www.varilumi.com/product-category/recessed-light/',
   track: 'https://www.varilumi.com/product-category/track-light/',
   ceiling: 'https://www.varilumi.com/product-category/ceiling-light/',
+  cove: 'https://www.varilumi.com/product-category/light-strip/',
 };
 
 export const ProductCards = memo(function ProductCards({ data, fixture, fixtureName, functionId, favorite }: Props) {
@@ -54,7 +56,7 @@ export const ProductCards = memo(function ProductCards({ data, fixture, fixtureN
           看全部 →
         </a>
       </div>
-      <p className="products-note">下單時在「{fn.family === '調光型' ? '調光功能' : '功能'}」選「{fn.name}」即可。多為訂製品，請先確認崁孔尺寸。</p>
+      <p className="products-note">下單時在「{fn.family === '調光型' ? '調光功能' : '功能'}」選「{fn.name}」即可。多為訂製品，請先確認尺寸。</p>
       <div className="product-row">
         {list.map((p) => (
           <a key={p.id} className="product" href={p.link} target="_blank" rel="noopener">
@@ -69,7 +71,11 @@ export const ProductCards = memo(function ProductCards({ data, fixture, fixtureN
                 />
               )}</span>
             <span className="pname">{p.name}</span>
-            {p.price !== null && <span className="pprice">NT$ {p.price.toLocaleString()} 起</span>}
+            {p.price !== null ? (
+              <span className="pprice">NT$ {p.price.toLocaleString()} 起</span>
+            ) : (
+              p.priceNote && <span className="pprice">{p.priceNote}</span>
+            )}
           </a>
         ))}
       </div>

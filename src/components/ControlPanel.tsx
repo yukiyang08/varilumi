@@ -1,6 +1,7 @@
 import { COLOR_LABEL, FUNCTIONS, FUNCTION_ORDER, KELVIN, MIN_LEVEL, kelvinLabel, type ColorChoice, type FunctionId } from '../engine/functions';
 import type { LightState } from '../engine/switchEngine';
-import type { LightGroupDef } from '../scenes';
+import type { Setup } from '../scenes';
+import { FnAnim } from './FnAnim';
 import { WallSwitch } from './WallSwitch';
 
 export interface GroupConfig {
@@ -61,13 +62,15 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
             const active = id === cfg.functionId;
             return (
               <button key={id} type="button" role="radio" aria-checked={active} className={`fn-chip ${active ? 'active' : ''}`} onClick={() => onConfig({ functionId: id })}>
-                <span className={`badge ${f.family === '調光型' ? 'dim' : 'tune'}`}>{f.family}</span>
-                {f.name}
+                {f.plainName}
               </button>
             );
           })}
         </div>
-        <p className="fn-sum-line">{def.summary}</p>
+        <p className="fn-sum-line">
+          {def.needDesc}
+          <span className="fn-official">　{def.family}・{def.name}</span>
+        </p>
       </div>
     );
   }
@@ -78,9 +81,13 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
         const active = id === cfg.functionId;
         return (
           <button key={id} type="button" role="radio" aria-checked={active} className={`fn-card ${active ? 'active' : ''}`} onClick={() => onConfig({ functionId: id })}>
-            <span className={`badge ${f.family === '調光型' ? 'dim' : 'tune'}`}>{f.family}</span>
-            <span className="fn-name">{f.name}</span>
-            <span className="fn-sum">{f.summary}</span>
+            <span className="fn-name">{f.plainName}</span>
+            <FnAnim id={id} />
+            <span className="fn-sum">{f.needDesc}</span>
+            <span className="fn-official">
+              <span className={`badge ${f.family === '調光型' ? 'dim' : 'tune'}`}>{f.family}</span>
+              {f.name}
+            </span>
           </button>
         );
       })}
@@ -94,7 +101,7 @@ export function Options({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig
     <div className={`opts ${compact ? 'compact' : ''}`}>
       {def.colorSelectable && (
         <div className="opt">
-          {!compact && <span className="opt-label">色溫（固定一種）</span>}
+          {!compact && <span className="opt-label">光色（這個功能固定一種光色）</span>}
           <div className="chips" role="radiogroup" aria-label="色溫">
             {(Object.keys(KELVIN) as ColorChoice[]).map((c) => (
               <button
@@ -170,7 +177,7 @@ export function HowTo({ cfg }: { cfg: GroupConfig }) {
   const def = FUNCTIONS[cfg.functionId];
   return (
     <div className="panel-block howto">
-      <h3 className="block-title">{def.name}怎麼用</h3>
+      <h3 className="block-title">{def.plainName}怎麼用</h3>
       <ul>
         {def.howTo.map((h) => (
           <li key={h}>{h}</li>
@@ -183,15 +190,15 @@ export function HowTo({ cfg }: { cfg: GroupConfig }) {
 
 /* ------------------------------------------------------------------ 更多設定 */
 
-export function MoreSettings({ cfg, onConfig, fixtures, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; fixtures?: React.ReactNode; compact?: boolean }) {
+export function MoreSettings({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; compact?: boolean }) {
+  const def = FUNCTIONS[cfg.functionId];
   return (
     <details className="more">
       <summary>
-        更多設定<small>色溫、記憶功能{fixtures ? '、軌道燈' : ''}</small>
+        更多設定<small>{def.colorSelectable ? '光色、' : ''}記憶功能</small>
       </summary>
       <div className="more-body">
         <Options cfg={cfg} onConfig={onConfig} compact={compact} />
-        {fixtures}
       </div>
     </details>
   );
@@ -200,7 +207,7 @@ export function MoreSettings({ cfg, onConfig, fixtures, compact }: { cfg: GroupC
 /* ------------------------------------------------------------------ desktop panel */
 
 interface Props {
-  group: LightGroupDef;
+  setup: Setup;
   cfg: GroupConfig;
   state: LightState;
   power: string;
@@ -210,7 +217,6 @@ interface Props {
   onSlow: () => void;
   busy: boolean;
   tutorial?: React.ReactNode;
-  fixtures?: React.ReactNode;
 }
 
 export function QuickSlowButtons({ onQuick, onSlow, busy, className, short }: { onQuick: () => void; onSlow: () => void; busy: boolean; className?: string; short?: boolean }) {
@@ -228,13 +234,13 @@ export function QuickSlowButtons({ onQuick, onSlow, busy, className, short }: { 
   );
 }
 
-export function ControlPanel({ group, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, tutorial, fixtures }: Props) {
+export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, tutorial }: Props) {
   return (
-    <section className="panel" aria-label={`${group.name}控制`}>
+    <section className="panel" aria-label={`${setup.fixture.name}控制`}>
       <div className="panel-block switch-block">
         {tutorial}
         <div className="switch-row">
-          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} label={group.name} />
+          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} label={setup.fixture.name} />
           <StatusView cfg={cfg} state={state} power={power} />
         </div>
         <div className="shortcuts">
@@ -245,7 +251,7 @@ export function ControlPanel({ group, cfg, state, power, onConfig, onPress, onQu
         <h3 className="block-title">選一個功能</h3>
         <FunctionPicker cfg={cfg} onConfig={onConfig} />
       </div>
-      <MoreSettings cfg={cfg} onConfig={onConfig} fixtures={fixtures} />
+      <MoreSettings cfg={cfg} onConfig={onConfig} />
       <HowTo cfg={cfg} />
     </section>
   );

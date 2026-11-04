@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FUNCTIONS, QUICK_MS, kelvinLabel } from './engine/functions';
-import { SwitchEngine, type LightState } from './engine/switchEngine';
+import { FUNCTIONS, QUICK_MS, kelvinLabel, type FunctionId } from './engine/functions';
+import { SwitchEngine } from './engine/switchEngine';
 import { colorWeights } from './render/compositor';
-import { SCENES, powerText, type FixtureId, type LightGroupDef, type SceneDef } from './scenes';
+import { getSetup, powerText, type FixtureId, type RoomId } from './scenes';
 import { SceneView } from './components/SceneView';
 import { ControlPanel, pct, type GroupConfig } from './components/ControlPanel';
 import { ProductCards, type ProductData } from './components/ProductCards';
 import { TUT_STEPS, Tutorial } from './components/Tutorial';
 import { MobileLayout } from './components/MobileLayout';
+import { Wizard, type WizardStep } from './components/Wizard';
+import { Breadcrumb } from './components/Breadcrumb';
 import { switchFeedback } from './feedback';
 
 const TUT_KEY = 'varilumi-tutorial-done';
@@ -28,7 +30,6 @@ const store = {
   },
 };
 
-const ALL_GROUPS = SCENES.flatMap((s) => s.groups);
 const MOBILE_QUERY = '(max-width: 959px) and (orientation: portrait)';
 
 function useIsMobile() {
@@ -52,61 +53,57 @@ export interface Favorite {
   seconds: number;
 }
 
-export default function App() {
-  const [sceneId, setSceneId] = useState<SceneDef['id']>('living');
-  const scene = SCENES.find((s) => s.id === sceneId)!;
-  const [groupId, setGroupId] = useState<FixtureId>(scene.groups[0].id);
-  const group = scene.groups.find((g) => g.id === groupId) ?? scene.groups[0];
+type Step = WizardStep | 'try';
 
-  // one engine per light group; every light starts ON so the first view is a lit room
-  const engines = useRef<Record<string, SwitchEngine>>({});
-  if (!Object.keys(engines.current).length) {
-    const t = performance.now();
-    for (const g of ALL_GROUPS) {
-      const e = new SwitchEngine({ ...g.defaults });
-      e.press(t);
-      engines.current[g.id] = e;
-    }
+export default function App() {
+  const [room, setRoom] = useState<RoomId>('living');
+  const [fixture, setFixture] = useState<FixtureId>('recessed');
+  const setup = useMemo(() => getSetup(room, fixture), [room, fixture]);
+  const [step, setStep] = useState<Step>('room');
+  const [single, setSingle] = useState(false); // editing one choice from the breadcrumb
+
+  const [cfg, setCfg] = useState<GroupConfig>({ functionId: 'four-step', kelvin: setup.fixture.kelvin, memory: false });
+
+  // one engine for the current room × fixture; a new setup is like installing new lamps, switched on
+  const engine = useRef<SwitchEngine>(null as unknown as SwitchEngine);
+  const engineKey = useRef('');
+  if (engineKey.current !== setup.key) {
+    engine.current = new SwitchEngine({ ...cfg });
+    engine.current.press(performance.now());
+    engineKey.current = setup.key;
   }
-  const [cfgs, setCfgs] = useState<Record<string, GroupConfig>>(() =>
-    Object.fromEntries(ALL_GROUPS.map((g) => [g.id, { ...g.defaults }])),
-  );
+
   const [productData, setProducts] = useState<ProductData | null>(null);
   const [tutStep, setTutStep] = useState<number | null>(() => (store.get(TUT_KEY) ? null : 0));
   const [presses, setPresses] = useState(0);
-  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false);
 
   // animation clock + LED soft-start smoothing + usage tracking
   const [now, setNow] = useState(() => performance.now());
-  const shown = useRef<Record<string, { level: number; mired: number }>>({});
+  const shown = useRef<{ level: number; mired: number } | null>(null);
   const usage = useRef<Record<string, { ms: number; label: string; fn: string }>>({});
   const lastT = useRef(performance.now());
-  const sceneRef = useRef(scene);
-  sceneRef.current = scene;
-  const groupRef = useRef(group);
-  groupRef.current = group;
 
   useEffect(() => {
     let raf = 0;
     const loop = (t: number) => {
       const dt = Math.min((t - lastT.current) / 1000, 0.1);
       lastT.current = t;
-      for (const g of sceneRef.current.groups) {
-        const s = engines.current[g.id].state(t);
-        const target = { level: s.level, mired: 1e6 / s.kelvin };
-        const cur = (shown.current[g.id] ??= { ...target });
-        const tau = target.level > cur.level ? RISE_S : FALL_S;
-        cur.level += (target.level - cur.level) * (1 - Math.exp(-dt / tau));
-        // colour changes only while lit; snap when dark so the next turn-on starts at the right colour
-        cur.mired = cur.level < 0.002 ? target.mired : cur.mired + (target.mired - cur.mired) * (1 - Math.exp(-dt / RISE_S));
-        // usage: time spent at each setting of the group being controlled (ignores ramps and darkness)
-        if (g.id === groupRef.current.id && s.switchOn && s.level > 0 && !s.ramping) {
-          const def = FUNCTIONS[engines.current[g.id].options.functionId];
-          const label = `${kelvinLabel(s.kelvin)} ${pct(s.level)}%`;
-          const key = `${g.id}|${def.id}|${label}`;
-          const u = (usage.current[key] ??= { ms: 0, label, fn: def.name });
-          u.ms += dt * 1000;
-        }
+      const e = engine.current;
+      const s = e.state(t);
+      const target = { level: s.level, mired: 1e6 / s.kelvin };
+      const cur = (shown.current ??= { ...target });
+      const tau = target.level > cur.level ? RISE_S : FALL_S;
+      cur.level += (target.level - cur.level) * (1 - Math.exp(-dt / tau));
+      // colour changes only while lit; snap when dark so the next turn-on starts at the right colour
+      cur.mired = cur.level < 0.002 ? target.mired : cur.mired + (target.mired - cur.mired) * (1 - Math.exp(-dt / RISE_S));
+      // usage: time spent at each setting (ignores ramps and darkness)
+      if (s.switchOn && s.level > 0 && !s.ramping) {
+        const def = FUNCTIONS[e.options.functionId];
+        const label = `${kelvinLabel(s.kelvin)} ${pct(s.level)}%`;
+        const key = `${engineKey.current}|${def.id}|${label}`;
+        const u = (usage.current[key] ??= { ms: 0, label, fn: def.name });
+        u.ms += dt * 1000;
       }
       setNow(t);
       raf = requestAnimationFrame(loop);
@@ -122,10 +119,6 @@ export default function App() {
       .catch(() => setProducts(null));
   }, []);
 
-  useEffect(() => {
-    if (!scene.groups.some((g) => g.id === groupId)) setGroupId(scene.groups[0].id);
-  }, [scene, groupId]);
-
   const advanceTutorial = useCallback((ev: string | null) => {
     setTutStep((s) => {
       if (s === null || s >= TUT_STEPS.length) return s;
@@ -138,31 +131,27 @@ export default function App() {
     });
   }, []);
 
-  const press = useCallback(
-    (id: string) => {
-      const e = engines.current[id];
-      const t = performance.now();
-      e.press(t);
-      const st = e.state(t);
-      switchFeedback(st.switchOn);
-      advanceTutorial(st.event);
-      setPresses((n) => n + 1);
-    },
-    [advanceTutorial],
-  );
+  const press = useCallback(() => {
+    const e = engine.current;
+    const t = performance.now();
+    e.press(t);
+    const st = e.state(t);
+    switchFeedback(st.switchOn);
+    advanceTutorial(st.event);
+    setPresses((n) => n + 1);
+  }, [advanceTutorial]);
 
   /** ⚡快切 / 🐢慢切 buttons: flip the switch off, then on again after `gap` ms, exactly as a hand would. */
   const runSequence = useCallback(
-    (id: string, gap: number) => {
-      const e = engines.current[id];
-      const st = e.state(performance.now());
-      setBusy((b) => ({ ...b, [id]: true }));
+    (gap: number) => {
+      const st = engine.current.state(performance.now());
+      setBusy(true);
       const done = () => {
-        press(id);
-        setBusy((b) => ({ ...b, [id]: false }));
+        press();
+        setBusy(false);
       };
       if (st.switchOn) {
-        press(id);
+        press();
         setTimeout(done, gap);
       } else {
         // already off: for 慢切 make sure the off time has passed the quick window
@@ -172,74 +161,77 @@ export default function App() {
     },
     [press],
   );
-  const onQuick = () => runSequence(group.id, 350);
-  const onSlow = () => runSequence(group.id, QUICK_MS + 300);
+  const onQuick = () => runSequence(350);
+  const onSlow = () => runSequence(QUICK_MS + 300);
 
-  const configure = useCallback((id: string, patch: Partial<GroupConfig>) => {
-    const e = engines.current[id];
+  const configure = useCallback((patch: Partial<GroupConfig>) => {
+    const e = engine.current;
     const t = performance.now();
     const fnChanged = patch.functionId !== undefined && patch.functionId !== e.options.functionId;
     const memChanged = patch.memory !== undefined && patch.memory !== e.options.memory;
     e.configure(patch, t);
     // a new function is like a freshly installed lamp: switch it on so the visitor sees it straight away
     if (fnChanged || memChanged) e.press(t);
-    setCfgs((c) => ({ ...c, [id]: { ...c[id], ...patch } }));
+    setCfg((c) => ({ ...c, ...patch }));
   }, []);
 
-  const states: Record<string, LightState> = Object.fromEntries(scene.groups.map((g) => [g.id, engines.current[g.id].state(now)]));
-
-  // light-layer weights from the smoothed (what-the-eye-sees) levels
-  const weightKey = scene.groups.map((g) => `${shown.current[g.id]?.level.toFixed(4)}:${shown.current[g.id]?.mired.toFixed(1)}`).join('|');
-  const weights = useMemo(() => {
-    const w: Record<string, number> = {};
-    for (const g of scene.groups) {
-      const sh = shown.current[g.id] ?? { level: states[g.id].level, mired: 1e6 / states[g.id].kelvin };
-      const { w6000, w3000 } = colorWeights(sh.level, 1e6 / sh.mired);
-      w[`${g.id}_6000`] = w6000;
-      w[`${g.id}_3000`] = w3000;
+  // ---- picker flow
+  const next = (from: WizardStep) => {
+    if (single) {
+      setSingle(false);
+      setStep('try');
+      return;
     }
-    return w;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weightKey, sceneId]);
+    setStep(from === 'room' ? 'fixture' : from === 'fixture' ? 'need' : 'try');
+  };
+  const pickRoom = (r: RoomId) => {
+    setRoom(r);
+    next('room');
+  };
+  const pickFixture = (f: FixtureId) => {
+    setFixture(f);
+    const k = getSetup(room, f).fixture.kelvin;
+    setCfg((c) => ({ ...c, kelvin: k }));
+    engineKey.current = ''; // rebuild the engine with the fixture's default colour
+    next('fixture');
+  };
+  const pickNeed = (fn: FunctionId) => {
+    configure({ functionId: fn });
+    next('need');
+  };
+  const editStep = (s: WizardStep) => {
+    setSingle(true);
+    setStep(s);
+    window.scrollTo({ top: 0 });
+  };
+  const back = () => {
+    if (single || step === 'room') {
+      setSingle(false);
+      setStep('try');
+    } else setStep(step === 'need' ? 'fixture' : 'room');
+  };
 
-  const cfg = cfgs[group.id];
-  const state = states[group.id];
-  const power = powerText(group, state.level);
+  // ---- derived view state
+  const state = engine.current.state(now);
+  const sh = shown.current ?? { level: state.level, mired: 1e6 / state.kelvin };
+  const weightKey = `${setup.key}:${sh.level.toFixed(4)}:${sh.mired.toFixed(1)}`;
+  const weights = useMemo(() => {
+    const { w6000, w3000 } = colorWeights(sh.level, 1e6 / sh.mired);
+    return { [setup.layers[0]]: w6000, [setup.layers[1]]: w3000 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weightKey]);
+  const power = powerText(setup, state.level);
   const isMobile = useIsMobile();
 
   // recommendation once the visitor has played a little
   const favorite: Favorite | null = useMemo(() => {
     if (presses < 4) return null;
-    const mine = Object.entries(usage.current).filter(([k]) => k.startsWith(`${group.id}|${cfg.functionId}|`));
+    const mine = Object.entries(usage.current).filter(([k]) => k.startsWith(`${setup.key}|${cfg.functionId}|`));
     if (!mine.length) return null;
     const [, best] = mine.sort((a, b) => b[1].ms - a[1].ms)[0];
     return best.ms > 3000 ? { label: best.label, functionName: best.fn, seconds: Math.round(best.ms / 1000) } : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presses, group.id, cfg.functionId, Math.floor(now / 2000)]);
-
-  const advancedGroups = scene.groups.filter((g) => g.advanced);
-  const fixtureSwitch = (g: LightGroupDef) => (
-    <button
-      key={g.id}
-      type="button"
-      role="tab"
-      aria-selected={g.id === group.id}
-      className={g.id === group.id ? 'active' : ''}
-      onClick={() => setGroupId(g.id)}
-    >
-      <span className={`lamp ${states[g.id].switchOn && states[g.id].level > 0 ? 'on' : ''}`} aria-hidden="true" />
-      {g.name}
-      <small>{g.detail}</small>
-    </button>
-  );
-  const fixtures = advancedGroups.length ? (
-    <div className="fixture-pick">
-      <span className="opt-label">要控制哪一組燈？（每組燈有自己的開關）</span>
-      <div className="group-tabs" role="tablist" aria-label="燈具">
-        {scene.groups.map(fixtureSwitch)}
-      </div>
-    </div>
-  ) : null;
+  }, [presses, setup.key, cfg.functionId, Math.floor(now / 2000)]);
 
   const tut =
     tutStep === null
@@ -253,7 +245,27 @@ export default function App() {
           onClose: () => setTutStep(null),
         };
 
-  const products = <ProductCards data={productData} fixture={group.id} fixtureName={group.name} functionId={cfg.functionId} favorite={favorite} />;
+  const header = (compact: boolean) => (
+    <header className={`top ${compact ? 'm-top' : ''}`}>
+      <a className="brand" href="https://www.varilumi.com/" target="_blank" rel="noopener">
+        <img src={`${import.meta.env.BASE_URL}logo.png`} alt="飛利明 Varilumi" width={compact ? 34 : 44} height={compact ? 34 : 44} />
+        <span>
+          <b>開關調光體驗室</b>
+          <small>{compact ? '不用換開關，按一下就能調光調色' : '飛利明 VariLumi'}</small>
+        </span>
+      </a>
+      {step === 'try' && (
+        <button type="button" className="link help" onClick={() => setTutStep(0)}>
+          ？教學
+        </button>
+      )}
+    </header>
+  );
+
+  const crumbs = <Breadcrumb setup={setup} functionId={cfg.functionId} onEdit={editStep} />;
+  const products = (
+    <ProductCards data={productData} fixture={fixture} fixtureName={setup.fixture.name} functionId={cfg.functionId} favorite={favorite} />
+  );
   const footer = (
     <footer className="foot">
       <p>
@@ -267,35 +279,50 @@ export default function App() {
     </footer>
   );
 
+  if (step !== 'try') {
+    return (
+      <div className={`app ${isMobile ? 'is-mobile' : ''} wizard-page`}>
+        {header(isMobile)}
+        {!isMobile && step === 'room' && !single && (
+          <div className="hero">
+            <h1>
+              不用換開關，<span className="grad">按一下就能調光調色</span>
+            </h1>
+            <p>選一個空間和燈具，親手按按看飛利明的開關調光。</p>
+          </div>
+        )}
+        <Wizard
+          step={step}
+          room={room}
+          fixture={fixture}
+          functionId={cfg.functionId}
+          single={single}
+          onRoom={pickRoom}
+          onFixture={pickFixture}
+          onNeed={pickNeed}
+          onBack={back}
+          onSkip={() => setStep('try')}
+        />
+      </div>
+    );
+  }
+
   if (isMobile) {
     return (
       <div className="app is-mobile">
-        <header className="top m-top">
-          <a className="brand" href="https://www.varilumi.com/" target="_blank" rel="noopener">
-            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="飛利明 Varilumi" width="34" height="34" />
-            <span>
-              <b>開關調光體驗室</b>
-              <small>不用換開關，按一下就能調光調色</small>
-            </span>
-          </a>
-          <button type="button" className="link help" onClick={() => setTutStep(0)}>
-            ？教學
-          </button>
-        </header>
+        {header(true)}
         <MobileLayout
-          scene={scene}
-          onScene={setSceneId}
-          group={group}
+          setup={setup}
           state={state}
           power={power}
           cfg={cfg}
           weights={weights}
-          onConfig={(p) => configure(group.id, p)}
-          onPress={() => press(group.id)}
+          onConfig={configure}
+          onPress={press}
           onQuick={onQuick}
           onSlow={onSlow}
-          busy={!!busy[group.id]}
-          fixtures={fixtures}
+          busy={busy}
+          crumbs={crumbs}
           tut={tut}
           after={
             <>
@@ -310,61 +337,28 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="top">
-        <a className="brand" href="https://www.varilumi.com/" target="_blank" rel="noopener">
-          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="飛利明 Varilumi" width="44" height="44" />
-          <span>
-            <b>開關調光體驗室</b>
-            <small>飛利明 VariLumi</small>
-          </span>
-        </a>
-        <button type="button" className="link help" onClick={() => setTutStep(0)}>
-          ？教學
-        </button>
-      </header>
-
-      <div className="hero">
-        <h1>
-          不用換開關，<span className="grad">按一下就能調光調色</span>
-        </h1>
-        <p>選一個功能，按下牆上的開關（或快切、慢切按鈕），看看燈光怎麼變。</p>
-      </div>
-
-      <nav className="scene-tabs" aria-label="場景">
-        {SCENES.map((s) => (
-          <button key={s.id} type="button" className={s.id === sceneId ? 'active' : ''} onClick={() => setSceneId(s.id)} aria-pressed={s.id === sceneId}>
-            {s.name}
-            <small>{s.groups.filter((g) => !g.advanced).map((g) => g.name).join('＋')}</small>
-          </button>
-        ))}
-      </nav>
-
+      {header(false)}
+      {crumbs}
       <main className="layout">
         <div className="stage">
-          <SceneView scene={scene} weights={weights} />
-          <p className="disclaimer">3D 模擬畫面，實際光色與亮度依空間、燈具數量而異。</p>
+          <SceneView setup={setup} weights={weights} />
+          <p className="disclaimer">3D 模擬畫面：{setup.detail}。實際光色與亮度依空間而異。</p>
         </div>
-
         <div className="side">
-          <p className="single-group">
-            正在控制：<b>{group.name}</b>　{group.detail}
-          </p>
           <ControlPanel
-            group={group}
+            setup={setup}
             cfg={cfg}
             state={state}
             power={power}
-            onConfig={(p) => configure(group.id, p)}
-            onPress={() => press(group.id)}
+            onConfig={configure}
+            onPress={press}
             onQuick={onQuick}
             onSlow={onSlow}
-            busy={!!busy[group.id]}
+            busy={busy}
             tutorial={tut ? <Tutorial step={tut.step} onSkip={tut.onSkip} onClose={tut.onClose} /> : null}
-            fixtures={fixtures}
           />
         </div>
       </main>
-
       {products}
       {footer}
     </div>

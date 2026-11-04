@@ -11,7 +11,7 @@ import re
 import urllib.request
 
 API = "https://varilumi.com/wp-json/wc/store/v1/products?per_page=100&page={}"
-FIXTURES = {24: "recessed", 27: "track", 25: "ceiling"}       # 崁燈 / 軌道燈 / 吸頂燈
+FIXTURES = {24: "recessed", 27: "track", 25: "ceiling", 39: "cove", 28: "cove"}   # 崁燈 / 軌道燈 / 吸頂燈 / 燈帶 + T5 層板燈 (間照)
 EXCLUDE = re.compile(r"遙控|WiFi|0 ?/ ?1-10V|植物|彩色|軌道-1公尺|對接頭|吸頂小軌道|組|入")
 OUT = os.path.join(os.path.dirname(__file__), "..", "public", "data", "products.json")
 
@@ -32,7 +32,7 @@ def www(url):
 
 
 def main():
-    out = {"recessed": [], "track": [], "ceiling": []}
+    out = {"recessed": [], "track": [], "ceiling": [], "cove": []}
     for p in fetch_all():
         name = html.unescape(p["name"])
         cats = {c["id"] for c in p["categories"]}
@@ -51,10 +51,12 @@ def main():
         pr = p["prices"]
         price = int(pr["price"]) // (10 ** pr.get("currency_minor_unit", 0)) if pr.get("price") else None
         img = p["images"][0] if p["images"] else None
+        per_length = "燈帶" in name            # strips are priced per 5 cm, so a unit price would mislead
         out[fixture].append({
             "id": p["id"],
             "name": re.sub(r"\s+", " ", name).strip(),
-            "price": price,
+            "price": None if per_length else price,
+            "priceNote": "依長度計價" if per_length else None,
             "image": www(img["thumbnail"]) if img else None,
             "link": www(p["permalink"]),
             "functions": funcs,

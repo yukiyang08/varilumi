@@ -1,15 +1,15 @@
 """Render light layers for a scene.
 
 Usage (with the bpy venv python):
-  python blender/render.py --scene living --layers base,recessed_6000,recessed_3000,track_6000,track_3000 \
-      --res 1800 1200 --samples 256 --out blender/out/living
-  python blender/render.py --scene living --layers preview --res 900 600 --samples 64 --out blender/out/preview
+  python blender/render.py --room living --fixture cove --layers base,6000,3000 --res 1200 800 --samples 64 \
+      --out blender/out/final/living-cove
+  python blender/render.py --room dining --fixture recessed --layers preview --res 900 600 --samples 48 --out blender/out/preview
 
 Layer names:
-  base             ambient only (dusk window + world), every fixture off
-  <group>_<kelvin> only that group on at 100% with the given colour temperature (linear EXR)
-  preview          everything on at 4000K + ambient, tone-mapped PNG for quick review
-  check            recessed 6000K + track 3000K + ambient, EXR (to validate the web compositor)
+  base     ambient only (dusk window + world), the fixture off            -> base.exr
+  <kelvin> only the fixture on at 100% at that colour temperature         -> <fixture>_<kelvin>.exr
+  preview  fixture on at 4000K + ambient, tone-mapped PNG for quick review -> <room>-<fixture>.png
+  check    fixture on at 4000K + ambient, EXR (validates the web compositor)
 Light layers contain no ambient, so  final = base + sum(weight_i * layer_i)  is physically exact.
 """
 import argparse
@@ -19,8 +19,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 import common as C  # noqa: E402
-
-SCENES = {"living": "scene_living", "bedroom": "scene_bedroom"}
+import rooms  # noqa: E402
 
 
 def set_group(name, on, kelvin=4000):
@@ -83,49 +82,36 @@ def configure(res, samples, exr):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--scene", required=True, choices=SCENES)
+    ap.add_argument("--room", required=True, choices=rooms.ROOMS)
+    ap.add_argument("--fixture", required=True, choices=rooms.FIXTURES)
     ap.add_argument("--layers", required=True)
-    ap.add_argument("--res", nargs=2, type=int, default=(1800, 1200))
-    ap.add_argument("--samples", type=int, default=256)
+    ap.add_argument("--res", nargs=2, type=int, default=(1200, 800))
+    ap.add_argument("--samples", type=int, default=64)
     ap.add_argument("--out", required=True)
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     a = ap.parse_args(argv)
 
-    mod = __import__(SCENES[a.scene])
-    mod.build()
+    rooms.build(a.room, a.fixture)
     os.makedirs(a.out, exist_ok=True)
-    groups = list(C.GROUPS)
+    g = a.fixture
 
     for layer in a.layers.split(","):
-        if layer == "preview":
-            configure(a.res, a.samples, exr=False)
+        if layer in ("preview", "check"):
+            configure(a.res, a.samples, exr=layer == "check")
             set_ambient(True)
-            for g in groups:
-                set_group(g, True, 4000)
-            path = os.path.join(a.out, f"{a.scene}_preview.png")
-        elif layer == "check":
-            configure(a.res, a.samples, exr=True)
-            set_ambient(True)
-            for g in groups:
-                set_group(g, False)
-            on = {"living": [("recessed", 6000), ("track", 3000)], "bedroom": [("ceiling", 4000)]}[a.scene]
-            for g, k in on:
-                set_group(g, True, k)
-            path = os.path.join(a.out, "check.exr")
+            set_group(g, True, 4000)
+            path = os.path.join(a.out, f"{a.room}-{a.fixture}.png" if layer == "preview" else "check.exr")
         elif layer == "base":
             configure(a.res, a.samples, exr=True)
             set_ambient(True)
-            for g in groups:
-                set_group(g, False)
+            set_group(g, False)
             path = os.path.join(a.out, "base.exr")
         else:
-            g, k = layer.rsplit("_", 1)
-            assert g in groups, f"unknown group {g}; have {groups}"
+            k = int(layer)
             configure(a.res, a.samples, exr=True)
             set_ambient(False)
-            for other in groups:
-                set_group(other, other == g, int(k))
-            path = os.path.join(a.out, f"{layer}.exr")
+            set_group(g, True, k)
+            path = os.path.join(a.out, f"{g}_{k}.exr")
         bpy.context.scene.render.filepath = path
         bpy.ops.render.render(write_still=True)
         print("WROTE", path, flush=True)
