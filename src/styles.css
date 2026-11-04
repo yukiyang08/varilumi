@@ -131,31 +131,34 @@ a { color: var(--brand-ink); }
 /* ---------- switch */
 .switch-block { background: linear-gradient(180deg, #f6f1e9, #efe8dc); }
 .switch-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
-.switch-wrap { display: grid; justify-items: center; gap: 8px; width: 140px; }
+.switch-wrap { display: grid; justify-items: center; gap: 4px; width: 140px; }
 .switch-hint .hp { display: block; }
 .switch-hint .sep { display: none; }
-.switch-frame { position: relative; width: 100px; height: 150px; }
-.switch-progress { position: absolute; inset: -7px; width: calc(100% + 14px); height: calc(100% + 14px); overflow: visible; }
-.ring-progress { fill: none; stroke: var(--quick); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; transition: stroke-dashoffset 0.05s linear; }
-/* wide-plate rocker, the common style in Taiwanese homes */
+.switch-ring { position: relative; width: 132px; height: 132px; }
+.switch-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ring-track { fill: none; stroke: rgba(0, 0, 0, 0.06); stroke-width: 6; }
+.ring-progress { fill: none; stroke: var(--quick); stroke-width: 6; stroke-linecap: round; }
 .plate {
-  position: absolute; inset: 0; border: 0; border-radius: 12px; padding: 0;
-  background: linear-gradient(160deg, #ffffff 0%, #f3f0ea 100%);
-  box-shadow: 0 1px 0 #fff inset, 0 0 0 1px rgba(60, 40, 10, 0.08), 0 8px 18px rgba(60, 40, 10, 0.16), 0 2px 3px rgba(60, 40, 10, 0.12);
+  position: absolute; inset: 18px; border: 0; border-radius: 14px; padding: 0;
+  background: linear-gradient(145deg, #ffffff, #ece7df);
+  box-shadow: 0 1px 0 #fff inset, 0 6px 14px rgba(60, 40, 10, 0.18), 0 1px 2px rgba(60, 40, 10, 0.2);
   touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
 .rocker {
-  position: absolute; inset: 14px 12px; border-radius: 7px; overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(60, 40, 10, 0.1), 0 1px 2px rgba(60, 40, 10, 0.12);
-  transition: background 0.08s, transform 0.08s;
+  position: absolute; inset: 14px 20px; border-radius: 8px; overflow: hidden;
+  background: #f7f5f1; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  transition: transform 0.08s;
 }
-/* on = top pressed in (shaded at top), off = bottom pressed in */
-.plate.is-on .rocker { background: linear-gradient(180deg, #e2ddd4 0%, #f1eee8 38%, #fbfaf7 60%, #ffffff 100%); }
-.plate.is-off .rocker { background: linear-gradient(180deg, #ffffff 0%, #fbfaf7 40%, #f1eee8 62%, #e2ddd4 100%); }
-.plate:active .rocker { transform: scale(0.985); }
-/* orange locator light that glows while the switch is OFF, so it can be found in the dark */
-.locator { position: absolute; left: 50%; top: 14%; width: 14px; height: 4px; margin-left: -7px; border-radius: 2px; background: #d9cfc0; transition: 0.15s; }
-.plate.is-off .locator { background: #ff8a1f; box-shadow: 0 0 8px 1px rgba(255, 138, 31, 0.8); }
+.rocker-top, .rocker-bottom { position: absolute; left: 0; right: 0; height: 50%; transition: background 0.1s; }
+.rocker-top { top: 0; }
+.rocker-bottom { bottom: 0; }
+.plate.is-off .rocker-top { background: linear-gradient(180deg, #fbfaf7, #f1eee8); }
+.plate.is-off .rocker-bottom { background: linear-gradient(180deg, #dcd6cc, #ebe7e0); }
+.plate.is-on .rocker-top { background: linear-gradient(180deg, #e5e0d7, #f2efe9); }
+.plate.is-on .rocker-bottom { background: linear-gradient(180deg, #fbfaf7, #f3f0eb); }
+.plate:active .rocker { transform: scale(0.97); }
+.led { position: absolute; left: 50%; top: 8px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #c9c1b4; transition: 0.15s; }
+.plate.is-on .led { background: var(--brand-2); box-shadow: 0 0 6px var(--brand-2); }
 .switch-hint { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; min-height: 2.6em; line-height: 1.45; }
 .switch-hint b { color: var(--ink); }
 .switch-hint b.quick, .m-dock-hint b.quick { color: var(--quick); }
@@ -306,9 +309,9 @@ a { color: var(--brand-ink); }
 .m-dock-name { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .m-dock-hint { font-size: 15px; line-height: 1.45; }
 .m-dock-hint b { color: var(--ink); }
-.switch-wrap.compact { width: auto; }
-.switch-wrap.compact .switch-frame { width: 78px; height: 116px; }
-.switch-wrap.compact .rocker { inset: 11px 9px; }
+.switch-wrap.compact { width: 108px; }
+.switch-wrap.compact .switch-ring { width: 108px; height: 108px; }
+.switch-wrap.compact .plate { inset: 13px; }
 .m-tut {
   display: flex; align-items: center; gap: 8px; margin: 0 0 6px; padding: 6px 6px 6px 10px; border-radius: 10px;
   background: #fff8e1; box-shadow: inset 0 0 0 1.5px var(--brand-1); font-size: 13.5px; animation: pop 0.25s ease-out;

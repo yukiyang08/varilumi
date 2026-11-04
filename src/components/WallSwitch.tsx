@@ -26,22 +26,29 @@ export function SwitchHint({ on, offFor }: { on: boolean; offFor: number | null 
   return <>現在按 = <b className="slow">慢切</b>，回到預設</>;
 }
 
-/**
- * Wide-plate rocker switch as found in most Taiwanese homes, with the orange locator
- * light that glows while the switch is off. A progress outline around the plate shows
- * the 2-second 快切 window after switching off.
- */
+const R = 92;
+const CIRC = 2 * Math.PI * R;
+
+/** Rocker switch with a countdown ring that shows the 2-second 快切 window after switching off. */
 export function WallSwitch({ on, offFor, onPress, label, compact }: Props) {
   const inQuick = !on && offFor !== null && offFor < QUICK_MS;
   const progress = inQuick ? 1 - offFor! / QUICK_MS : 0;
 
   return (
     <div className={`switch-wrap ${compact ? 'compact' : ''}`}>
-      <div className="switch-frame">
-        <svg className="switch-progress" viewBox="0 0 100 150" preserveAspectRatio="none" aria-hidden="true">
-          {inQuick && (
-            <rect x="2" y="2" width="96" height="146" rx="14" ry="14" pathLength="1" className="ring-progress" strokeDasharray="1 1" strokeDashoffset={1 - progress} />
-          )}
+      <div className="switch-ring">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r={R} className="ring-track" />
+          <circle
+            cx="100"
+            cy="100"
+            r={R}
+            className="ring-progress"
+            strokeDasharray={CIRC}
+            strokeDashoffset={CIRC * (1 - progress)}
+            transform="rotate(-90 100 100)"
+            style={{ opacity: inQuick ? 1 : 0 }}
+          />
         </svg>
         <button
           type="button"
@@ -61,7 +68,9 @@ export function WallSwitch({ on, offFor, onPress, label, compact }: Props) {
           aria-label={`${label}牆壁開關，目前${on ? '開' : '關'}。連按兩下換下一段`}
         >
           <span className="rocker">
-            <span className="locator" />
+            <span className="rocker-top" />
+            <span className="rocker-bottom" />
+            <span className="led" />
           </span>
         </button>
       </div>
