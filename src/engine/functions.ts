@@ -50,7 +50,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     ],
     colorSelectable: true,
     summary: '一盞燈四種亮度，色溫固定。最經典、最直覺。',
-    howTo: ['慢切開燈：從 100% 開始', '快切（關了馬上開）：跳到下一段', '100% → 50% → 25% → 1% → 循環'],
+    howTo: ['開燈：100% 全亮', '連按兩下開關（快切）：跳到下一段', '100% → 50% → 25% → 1% 夜燈 → 循環', '關燈等 2 秒再開（慢切）：回到 100%'],
   },
   stepless: {
     id: 'stepless',
@@ -60,7 +60,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     steps: [{ level: 1, label: '100%' }],
     colorSelectable: true,
     summary: '1～100% 任意亮度。無段是「無限多段」，不是沒有段數。',
-    howTo: ['慢切開燈：100% 全亮', '快切一下：從夜燈開始約 6 秒慢慢變亮', '亮度到了再快切一下：停在這個亮度'],
+    howTo: ['開燈：100% 全亮', '連按兩下（快切）：從夜燈開始約 6 秒慢慢變亮', '亮度剛好時再連按兩下：停在這個亮度', '關燈等 2 秒再開（慢切）：回到 100%'],
   },
   'tri-color-night': {
     id: 'tri-color-night',
@@ -75,7 +75,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     ],
     colorSelectable: false,
     summary: '白、柔、黃三種色溫全亮，第四段是黃光小夜燈。',
-    howTo: ['慢切開燈：白光全亮', '快切：白 → 柔 → 黃 → 夜燈 → 循環'],
+    howTo: ['開燈：白光全亮', '連按兩下（快切）：白 → 柔 → 黃 → 黃光夜燈 → 循環', '關燈等 2 秒再開（慢切）：回到白光'],
   },
 };
 

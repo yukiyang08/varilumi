@@ -14,6 +14,8 @@ export function SceneView({ scene, weights }: Props) {
   const compRef = useRef<Compositor | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'nogl'>('loading');
   const [meta, setMeta] = useState<LayerMeta | null>(null);
+  const weightsRef = useRef(weights);
+  weightsRef.current = weights;
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -40,6 +42,8 @@ export function SceneView({ scene, weights }: Props) {
         setMeta(m);
         if (compRef.current) {
           await compRef.current.load(`${BASE}/${scene.id}`, layerNames(scene), m);
+          compRef.current.setWeights(weightsRef.current); // apply the current lights once images are in
+          compRef.current.snapExposure();
           if (!cancelled) setStatus('ready');
         }
       } catch {

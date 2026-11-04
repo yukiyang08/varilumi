@@ -147,6 +147,11 @@ export class Compositor {
     this.targetExposure = this.computeExposure();
   }
 
+  /** Jump straight to the adapted exposure (e.g. right after a scene loads). */
+  snapExposure(): void {
+    this.exposure = this.targetExposure;
+  }
+
   /** Eye adaptation: darker scene → open up, but only partially, so dim still reads as dim. */
   private computeExposure(): number {
     if (!this.meta) return 1;

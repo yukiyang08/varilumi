@@ -1,44 +1,34 @@
 interface Props {
-  step: number; // 0..3 (3 = done)
+  step: number; // 0..2 (2 = done)
   onSkip: () => void;
   onClose: () => void;
 }
 
-const STEPS = [
-  { title: '① 開燈', text: '按一下下面的牆壁開關，把燈打開。' },
-  { title: '② 快切', text: '關燈後 2 秒內馬上再打開（或按「⚡快切」），看燈怎麼變。' },
-  { title: '③ 慢切', text: '關燈超過 2 秒再打開（或按「🐢慢切」），燈會回到預設狀態。' },
+export const TUT_STEPS = [
+  { title: '連按兩下開關', text: '就像在家裡一樣，關了馬上再開＝快切，燈會換到下一段。' },
+  { title: '按一下關燈，等 2 秒再打開', text: '這叫慢切，燈會回到預設的狀態。' },
 ];
+export const TUT_DONE = { title: '學會了！', text: '飛利明開關調光就是這麼簡單。換其他功能試試看吧。' };
 
-/** Interactive 3-step guide; each step completes when the visitor actually does it. */
+/** Two-step guide; each step completes when the visitor actually does it with the switch. */
 export function Tutorial({ step, onSkip, onClose }: Props) {
-  if (step >= 3) {
-    return (
-      <div className="tutorial done" role="status">
-        <div>
-          <b>學會了！🎉</b>
-          <p>這就是開關調光：不用換開關，只靠「快切、慢切」的節奏調光調色。換其他功能試試看吧。</p>
-        </div>
-        <button type="button" className="link" onClick={onClose}>
-          關閉
-        </button>
-      </div>
-    );
-  }
-  const s = STEPS[step];
+  const done = step >= TUT_STEPS.length;
+  const s = done ? TUT_DONE : TUT_STEPS[step];
   return (
-    <div className="tutorial" role="status" aria-live="polite">
-      <div className="tut-dots" aria-hidden="true">
-        {STEPS.map((_, i) => (
-          <span key={i} className={i < step ? 'ok' : i === step ? 'cur' : ''} />
-        ))}
-      </div>
+    <div className={`tutorial ${done ? 'done' : ''}`} role="status" aria-live="polite">
+      {!done && (
+        <div className="tut-dots" aria-hidden="true">
+          {TUT_STEPS.map((_, i) => (
+            <span key={i} className={i < step ? 'ok' : i === step ? 'cur' : ''} />
+          ))}
+        </div>
+      )}
       <div>
-        <b>{s.title}</b>
+        <b>{done ? '🎉 ' : `${step + 1}. `}{s.title}</b>
         <p>{s.text}</p>
       </div>
-      <button type="button" className="link" onClick={onSkip}>
-        略過教學
+      <button type="button" className="link" onClick={done ? onClose : onSkip}>
+        {done ? '關閉' : '略過'}
       </button>
     </div>
   );

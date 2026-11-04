@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { FUNCTIONS, type FunctionId } from '../engine/functions';
 import type { FixtureId } from '../scenes';
+import type { Favorite } from '../App';
 
 export interface Product {
   id: number;
@@ -17,6 +18,7 @@ interface Props {
   fixture: FixtureId;
   fixtureName: string;
   functionId: FunctionId;
+  favorite?: Favorite | null;
 }
 
 const SHOP: Record<FixtureId, string> = {
@@ -25,12 +27,25 @@ const SHOP: Record<FixtureId, string> = {
   ceiling: 'https://www.varilumi.com/product-category/ceiling-light/',
 };
 
-export const ProductCards = memo(function ProductCards({ data, fixture, fixtureName, functionId }: Props) {
+export const ProductCards = memo(function ProductCards({ data, fixture, fixtureName, functionId, favorite }: Props) {
   if (!data) return null;
   const list = data[fixture].filter((p) => p.functions.includes(functionId));
   const fn = FUNCTIONS[functionId];
   return (
     <section className="products" aria-label="推薦商品">
+      {favorite && (
+        <div className="favorite" role="status">
+          <span className="fav-k">你剛剛最常停在</span>
+          <b>
+            {favorite.label}
+          </b>
+          <span className="fav-k">→ 推薦選購</span>
+          <b className="fav-fn">
+            {favorite.functionName}
+            {fn.colorSelectable ? `・${favorite.label.split(' ')[0]}` : ''}
+          </b>
+        </div>
+      )}
       <div className="products-head">
         <h3>
           喜歡這個功能？有「{fn.name}」的{fixtureName}

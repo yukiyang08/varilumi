@@ -21,7 +21,7 @@ export function eventText(state: LightState, cfg: GroupConfig): string {
     case 'step':
       return `⚡快切 → 跳到下一段：${now}`;
     case 'ramp-start':
-      return '⚡快切 → 從夜燈開始慢慢變亮…喜歡的亮度再快切一次';
+      return '⚡快切 → 從夜燈開始慢慢變亮…亮度剛好時再連按兩下';
     case 'ramp-stop':
       return `⚡快切 → 停在 ${now}`;
     case 'ramp-done':
@@ -31,7 +31,7 @@ export function eventText(state: LightState, cfg: GroupConfig): string {
     case 'slow-memory':
       return `🐢慢切 → 記憶功能：回到上次的 ${now}`;
     case 'off':
-      return '關燈中…';
+      return '關燈了。馬上再按＝快切，等 2 秒再按＝慢切';
     default:
       return '按下開關試試看';
   }
@@ -125,7 +125,7 @@ export function Options({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig
   );
 }
 
-export function StatusView({ cfg, state, hideReadout }: { cfg: GroupConfig; state: LightState; hideReadout?: boolean }) {
+export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfig; state: LightState; hideReadout?: boolean; power?: string }) {
   const def = FUNCTIONS[cfg.functionId];
   const lit = state.switchOn && state.level > 0;
   return (
@@ -137,6 +137,7 @@ export function StatusView({ cfg, state, hideReadout }: { cfg: GroupConfig; stat
             <i style={{ background: kelvinSwatch(state.kelvin) }} />
             {state.kelvin}K {kelvinLabel(state.kelvin)}
           </span>
+          {power && state.switchOn && <span className="watt">耗電 {power}</span>}
         </div>
       )}
       {def.mode === 'steps' ? (
@@ -180,43 +181,50 @@ export function HowTo({ cfg }: { cfg: GroupConfig }) {
   );
 }
 
+/* ------------------------------------------------------------------ 更多設定 */
+
+export function MoreSettings({ cfg, onConfig, fixtures, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; fixtures?: React.ReactNode; compact?: boolean }) {
+  return (
+    <details className="more">
+      <summary>
+        更多設定<small>色溫、記憶功能{fixtures ? '、軌道燈' : ''}</small>
+      </summary>
+      <div className="more-body">
+        <Options cfg={cfg} onConfig={onConfig} compact={compact} />
+        {fixtures}
+      </div>
+    </details>
+  );
+}
+
 /* ------------------------------------------------------------------ desktop panel */
 
 interface Props {
   group: LightGroupDef;
   cfg: GroupConfig;
   state: LightState;
-  busy: boolean;
+  power: string;
   onConfig: (patch: Partial<GroupConfig>) => void;
   onPress: () => void;
-  onQuick: () => void;
-  onSlow: () => void;
   tutorial?: React.ReactNode;
+  fixtures?: React.ReactNode;
 }
 
-export function ControlPanel({ group, cfg, state, busy, onConfig, onPress, onQuick, onSlow, tutorial }: Props) {
+export function ControlPanel({ group, cfg, state, power, onConfig, onPress, tutorial, fixtures }: Props) {
   return (
     <section className="panel" aria-label={`${group.name}控制`}>
       <div className="panel-block switch-block">
         {tutorial}
         <div className="switch-row">
-          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} disabled={busy} label={group.name} />
-          <StatusView cfg={cfg} state={state} />
-        </div>
-        <div className="shortcuts">
-          <button type="button" className="btn quick" onClick={onQuick} disabled={busy}>
-            ⚡ 快切<small>關了馬上開</small>
-          </button>
-          <button type="button" className="btn slow" onClick={onSlow} disabled={busy}>
-            🐢 慢切<small>關超過 2 秒再開</small>
-          </button>
+          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} label={group.name} />
+          <StatusView cfg={cfg} state={state} power={power} />
         </div>
       </div>
       <div className="panel-block">
         <h3 className="block-title">選一個功能</h3>
         <FunctionPicker cfg={cfg} onConfig={onConfig} />
-        <Options cfg={cfg} onConfig={onConfig} />
       </div>
+      <MoreSettings cfg={cfg} onConfig={onConfig} fixtures={fixtures} />
       <HowTo cfg={cfg} />
     </section>
   );
