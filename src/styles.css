@@ -447,16 +447,17 @@ a { color: var(--brand-ink); }
 .crumbs-wrap .crumbs { margin: 0; }
 /* phones: the sheet is position:fixed, so its wrapper must not create a stacking context under the dock */
 .is-mobile .crumbs-wrap { position: static; z-index: auto; padding: 0; margin: 0; background: none; }
-/* phones: the choices are glass chips on top of the pinned picture */
-.m-crumbs { position: absolute; top: 10px; left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px)); }
-.m-crumbs .crumbs { gap: 6px; }
-.m-crumbs .crumb {
-  border: 0; color: #fff; padding: 6px 10px; gap: 4px;
-  background: rgba(20, 16, 12, 0.46); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+/* phones: the choices are a slim bar directly under the pinned picture, so they never cover it
+   but stay one tap away however far the page scrolls */
+.m-picture { position: relative; }
+.m-crumbs {
+  background: var(--bg); box-shadow: 0 1px 0 var(--line);
+  padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
 }
-.m-crumbs .crumb small { color: rgba(255, 255, 255, 0.7); font-size: 11px; }
-.m-crumbs .crumb b { font-size: 14px; }
-.m-crumbs .crumb .caret { color: rgba(255, 255, 255, 0.7); }
+.m-crumbs .crumbs { gap: 6px; }
+.m-crumbs .crumb { flex: 1 1 0; min-width: 0; justify-content: center; padding: 7px 8px; gap: 4px; background: var(--surface); border: 0; }
+.m-crumbs .crumb b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.m-crumbs .crumb small { font-size: 11px; flex: none; }
 .qp-backdrop { position: fixed; inset: 0; z-index: 30; background: rgba(30, 22, 12, 0.18); animation: qpfade 0.18s ease-out; }
 .qp {
   position: absolute; z-index: 31; top: calc(100% - 6px); left: 0; width: min(640px, 100%);

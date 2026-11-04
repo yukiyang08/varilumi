@@ -38,18 +38,20 @@ export function MobileLayout(p: Props) {
   return (
     <div className="m-app">
       <div className="m-stage">
-        <SceneView setup={setup} weights={p.weights} />
-        {/* the choices sit on the pinned picture, so they stay one tap away however far the page scrolls */}
-        <div className="m-crumbs">{p.crumbs}</div>
-        <div className={`m-readout ${lit ? 'lit' : ''}`} aria-live="polite">
-          <span className="m-big">{state.switchOn ? (state.flashing ? '✦' : `${pct(state.level)}%`) : '關燈'}</span>
-          {state.switchOn && (
-            <span className="m-k">
-              <i style={{ background: kelvinSwatch(state.kelvin) }} />
-              {kelvinLabel(state.kelvin)}・{p.power}
-            </span>
-          )}
+        <div className="m-picture">
+          <SceneView setup={setup} weights={p.weights} />
+          <div className={`m-readout ${lit ? 'lit' : ''}`} aria-live="polite">
+            <span className="m-big">{state.switchOn ? (state.flashing ? '✦' : `${pct(state.level)}%`) : '關燈'}</span>
+            {state.switchOn && (
+              <span className="m-k">
+                <i style={{ background: kelvinSwatch(state.kelvin) }} />
+                {kelvinLabel(state.kelvin)}・{p.power}
+              </span>
+            )}
+          </div>
         </div>
+        {/* the choices sit right under the pinned picture: never covering it, always one tap away */}
+        <div className="m-crumbs">{p.crumbs}</div>
       </div>
 
       <div className="m-body">
