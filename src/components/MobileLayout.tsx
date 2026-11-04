@@ -39,6 +39,8 @@ export function MobileLayout(p: Props) {
     <div className="m-app">
       <div className="m-stage">
         <SceneView setup={setup} weights={p.weights} />
+        {/* the choices sit on the pinned picture, so they stay one tap away however far the page scrolls */}
+        <div className="m-crumbs">{p.crumbs}</div>
         <div className={`m-readout ${lit ? 'lit' : ''}`} aria-live="polite">
           <span className="m-big">{state.switchOn ? (state.flashing ? '✦' : `${pct(state.level)}%`) : '關燈'}</span>
           {state.switchOn && (
@@ -51,7 +53,6 @@ export function MobileLayout(p: Props) {
       </div>
 
       <div className="m-body">
-        {p.crumbs}
         <FunctionPicker cfg={p.cfg} onConfig={p.onConfig} compact />
         <div className="m-status">
           <StatusView cfg={p.cfg} state={state} hideReadout />

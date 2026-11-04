@@ -218,14 +218,45 @@ export class Compositor {
   }
 }
 
+/** Decoded layer images are cached, so switching back and forth between rooms is instant. */
+const imageCache = new Map<string, Promise<HTMLImageElement>>();
+const metaCache = new Map<string, Promise<LayerMeta>>();
+
 function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => res(img);
-    img.onerror = () => rej(new Error(`failed to load ${src}`));
-    img.src = src;
-  });
+  let p = imageCache.get(src);
+  if (!p) {
+    p = new Promise((res, rej) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => res(img);
+      img.onerror = () => {
+        imageCache.delete(src);
+        rej(new Error(`failed to load ${src}`));
+      };
+      img.src = src;
+    });
+    imageCache.set(src, p);
+  }
+  return p;
+}
+
+export function loadMeta(dir: string): Promise<LayerMeta> {
+  let p = metaCache.get(dir);
+  if (!p) {
+    p = fetch(`${dir}/layers.json`).then((r) => {
+      if (!r.ok) throw new Error(`failed to load ${dir}/layers.json`);
+      return r.json() as Promise<LayerMeta>;
+    });
+    p.catch(() => metaCache.delete(dir));
+    metaCache.set(dir, p);
+  }
+  return p;
+}
+
+/** Warm the cache for a scene the visitor is likely to open next (errors are ignored). */
+export function prefetch(dir: string, layerNames: string[]): void {
+  loadMeta(dir).catch(() => undefined);
+  for (const n of ['base', ...layerNames]) loadImage(`${dir}/${n}.webp`).catch(() => undefined);
 }
 
 /** Split a fixture's (level, kelvin) into weights for its 6000K and 3000K layers (mired-linear mix). */

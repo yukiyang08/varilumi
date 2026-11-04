@@ -10,6 +10,7 @@ import { TUT_STEPS, Tutorial } from './components/Tutorial';
 import { MobileLayout } from './components/MobileLayout';
 import { Wizard, type WizardStep } from './components/Wizard';
 import { Breadcrumb } from './components/Breadcrumb';
+import { QuickPicker } from './components/QuickPicker';
 import { switchFeedback } from './feedback';
 
 const TUT_KEY = 'varilumi-tutorial-done';
@@ -61,6 +62,7 @@ export default function App() {
   const setup = useMemo(() => getSetup(room, fixture), [room, fixture]);
   const [step, setStep] = useState<Step>('room');
   const [single, setSingle] = useState(false); // editing one choice from the breadcrumb
+  const [sheet, setSheet] = useState<WizardStep | null>(null); // in-place picker opened from the breadcrumb
 
   const [cfg, setCfg] = useState<GroupConfig>({ functionId: 'four-step', kelvin: setup.fixture.kelvin, memory: false });
 
@@ -199,10 +201,23 @@ export default function App() {
     configure({ functionId: fn });
     next('need');
   };
-  const editStep = (s: WizardStep) => {
-    setSingle(true);
-    setStep(s);
-    window.scrollTo({ top: 0 });
+  const editStep = (s: WizardStep) => setSheet(s);
+  // in-place changes from the simulator: apply immediately, keep the page where it is
+  const quickRoom = (r: RoomId) => {
+    setRoom(r);
+    setSheet(null);
+  };
+  const quickFixture = (f: FixtureId) => {
+    if (f !== fixture) {
+      setFixture(f);
+      setCfg((c) => ({ ...c, kelvin: getSetup(room, f).fixture.kelvin }));
+      engineKey.current = '';
+    }
+    setSheet(null);
+  };
+  const quickNeed = (fn: FunctionId) => {
+    configure({ functionId: fn });
+    setSheet(null);
   };
   const back = () => {
     if (single || step === 'room') {
@@ -262,7 +277,24 @@ export default function App() {
     </header>
   );
 
-  const crumbs = <Breadcrumb setup={setup} functionId={cfg.functionId} onEdit={editStep} />;
+  const crumbs = (
+    <div className="crumbs-wrap">
+      <Breadcrumb setup={setup} functionId={cfg.functionId} onEdit={editStep} />
+      {sheet && (
+        <QuickPicker
+          kind={sheet}
+          room={room}
+          fixture={fixture}
+          functionId={cfg.functionId}
+          onRoom={quickRoom}
+          onFixture={quickFixture}
+          onNeed={quickNeed}
+          onClose={() => setSheet(null)}
+          sheet={isMobile}
+        />
+      )}
+    </div>
+  );
   const products = (
     <ProductCards data={productData} fixture={fixture} fixtureName={setup.fixture.name} functionId={cfg.functionId} favorite={favorite} />
   );

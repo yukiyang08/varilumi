@@ -63,7 +63,7 @@ a { color: var(--brand-ink); }
 .layout { display: grid; gap: 16px; }
 @media (min-width: 960px) {
   .layout { grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr); align-items: start; }
-  .stage { position: sticky; top: 12px; }
+  .stage { position: sticky; top: 72px; } /* below the pinned breadcrumb */
 }
 /* phones in landscape: side-by-side, scene pinned on the left at screen height */
 @media (max-width: 959px) and (orientation: landscape) {
@@ -434,3 +434,58 @@ a { color: var(--brand-ink); }
 .fn-anim .glide { display: block; height: 100%; width: 100%; border-radius: inherit; background: linear-gradient(90deg, #3a342d, #ffd58a); transform-origin: left; animation: glide 3.2s ease-in-out infinite; }
 @keyframes glide { 0% { transform: scaleX(0.04); } 70%, 100% { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) { .fn-anim .bulb { opacity: var(--o); } .fn-anim .glide { transform: none; } }
+
+/* ================================================================ smooth switching */
+.scene-fade { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; opacity: 1; transition: opacity 0.38s ease; }
+.scene-fade.out { opacity: 0; }
+
+/* desktop: the breadcrumb stays pinned at the top, so switching is always one tap away while scrolling */
+.crumbs-wrap {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 15;
+  background: var(--bg); padding-block: 6px 2px; margin-bottom: 8px;
+}
+.crumbs-wrap .crumbs { margin: 0; }
+/* phones: the sheet is position:fixed, so its wrapper must not create a stacking context under the dock */
+.is-mobile .crumbs-wrap { position: static; z-index: auto; padding: 0; margin: 0; background: none; }
+/* phones: the choices are glass chips on top of the pinned picture */
+.m-crumbs { position: absolute; top: 10px; left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px)); }
+.m-crumbs .crumbs { gap: 6px; }
+.m-crumbs .crumb {
+  border: 0; color: #fff; padding: 6px 10px; gap: 4px;
+  background: rgba(20, 16, 12, 0.46); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.m-crumbs .crumb small { color: rgba(255, 255, 255, 0.7); font-size: 11px; }
+.m-crumbs .crumb b { font-size: 14px; }
+.m-crumbs .crumb .caret { color: rgba(255, 255, 255, 0.7); }
+.qp-backdrop { position: fixed; inset: 0; z-index: 30; background: rgba(30, 22, 12, 0.18); animation: qpfade 0.18s ease-out; }
+.qp {
+  position: absolute; z-index: 31; top: calc(100% - 6px); left: 0; width: min(640px, 100%);
+  background: var(--bg); border-radius: 16px; padding: 12px 14px 14px;
+  box-shadow: 0 0 0 1px var(--line), 0 18px 40px rgba(60, 40, 10, 0.18); animation: qpdrop 0.18s ease-out;
+}
+.qp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.qp-head b { font-size: 16px; }
+.qp-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.qp-item { display: grid; gap: 6px; padding: 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); text-align: left; }
+.qp-item img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 8px; display: block; background: #2a2622; }
+.qp-item b { padding-inline: 2px; font-size: 14.5px; }
+.qp-item.active { border-color: transparent; box-shadow: inset 0 0 0 2px var(--brand-2); }
+.qp-needs { display: grid; gap: 8px; }
+.qp-need { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); text-align: left; }
+.qp-need b { display: block; font-size: 15.5px; }
+.qp-need small { color: var(--muted); font-size: 13px; }
+.qp-need.active { border-color: transparent; box-shadow: inset 0 0 0 2px var(--brand-2); }
+@keyframes qpdrop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes qpfade { from { opacity: 0; } to { opacity: 1; } }
+
+/* phones: a bottom sheet in thumb reach, above the switch dock */
+.qp.qp-sheet {
+  position: fixed; top: auto; left: 0; right: 0; bottom: 0; width: auto; z-index: 41;
+  border-radius: 20px 20px 0 0; padding: 14px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  box-shadow: 0 -12px 40px rgba(60, 40, 10, 0.22); animation: qpsheet 0.22s ease-out;
+}
+.qp.qp-sheet::before { content: ''; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: -4px auto 10px; }
+.qp-backdrop.qp-sheet { z-index: 40; }
+.qp.qp-sheet .qp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@keyframes qpsheet { from { transform: translateY(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .scene-fade { transition: none; } }
