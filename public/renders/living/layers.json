@@ -1,0 +1,21 @@
+{
+  "layers": {
+    "base": {
+      "meanLum": 0.06472
+    },
+    "recessed_3000": {
+      "meanLum": 0.3146
+    },
+    "recessed_6000": {
+      "meanLum": 0.30558
+    },
+    "track_3000": {
+      "meanLum": 0.02592
+    },
+    "track_6000": {
+      "meanLum": 0.02521
+    }
+  },
+  "width": 900,
+  "height": 600
+}

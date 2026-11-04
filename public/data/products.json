@@ -1,0 +1,335 @@
+{
+ "recessed": [
+  {
+   "id": 5736,
+   "name": "護眼抗閃防眩 15cm/15W【調光型】散光崁燈",
+   "price": 230,
+   "image": "https://www.varilumi.com/wp-content/uploads/新-商品簡圖-1-300x300.png",
+   "link": "https://www.varilumi.com/product/recessed-light-15w-15cm-dimmable-1pc/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 3224,
+   "name": "護眼抗閃防眩 7-12cm/8-13W 【調光型】散光崁燈",
+   "price": 240,
+   "image": "https://www.varilumi.com/wp-content/uploads/9公分_正面調光商品_1000x1000-300x300.jpg",
+   "link": "https://www.varilumi.com/product/recessed-light-7-12cm-8-13w-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 3809,
+   "name": "護眼抗閃防眩 7-12cm/8-20W 【調光型】散光可轉方向崁燈",
+   "price": 298,
+   "image": "https://www.varilumi.com/wp-content/uploads/調光商品800x800-300x300.jpg",
+   "link": "https://www.varilumi.com/product/adjustable-recessed-light-7-9cm-8-12w-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 3595,
+   "name": "護眼抗閃防眩 7-9cm/8-20W 【調光型】投射崁燈",
+   "price": 298,
+   "image": "https://www.varilumi.com/wp-content/uploads/調光商品1000x1000-300x300.jpg",
+   "link": "https://www.varilumi.com/product/recessed-downlight-7-9cm-8-12w-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 4296,
+   "name": "爆亮款15cm /30W-15W【調光型】散光崁燈",
+   "price": 300,
+   "image": "https://www.varilumi.com/wp-content/uploads/官網商品封面800X800-12-300x300.png",
+   "link": "https://www.varilumi.com/product/recessed-light-30w-15cm-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 3342,
+   "name": "護眼抗閃防眩 7-12cm/8-13W 【調色型】散光崁燈",
+   "price": 320,
+   "image": "https://www.varilumi.com/wp-content/uploads/9公分_正面調色商品_1000x1000-1-300x300.jpg",
+   "link": "https://www.varilumi.com/product/recessed-light-7-12cm-8-12w-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 2689,
+   "name": "護眼抗閃防眩 15cm/15W【調色型】散光崁燈",
+   "price": 320,
+   "image": "https://www.varilumi.com/wp-content/uploads/調色商品3000K_GPT-300x300.png",
+   "link": "https://www.varilumi.com/product/15w-15cm-color-adjustable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 14647,
+   "name": "深凹護眼抗閃防眩【調光型】崁燈",
+   "price": 360,
+   "image": "https://www.varilumi.com/wp-content/uploads/調光型商品-300x300.png",
+   "link": "https://www.varilumi.com/product/deep-recessed-anti-glare-led-downlight-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 3450,
+   "name": "爆亮款15cm/30W -15W【調色型】散光崁燈",
+   "price": 380,
+   "image": "https://www.varilumi.com/wp-content/uploads/官網商品封面800X800-11-300x300.png",
+   "link": "https://www.varilumi.com/product/recessed-light-30w-15cm-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 3925,
+   "name": "護眼抗閃防眩 7-12cm/8-20W 【調色型】散光可轉方向崁燈",
+   "price": 420,
+   "image": "https://www.varilumi.com/wp-content/uploads/調色商品800x800-300x300.jpg",
+   "link": "https://www.varilumi.com/product/adjustable-recessed-light-7-9cm-8-12w-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 3754,
+   "name": "護眼抗閃防眩 7-9cm/8-20W 【調色型】投射崁燈",
+   "price": 420,
+   "image": "https://www.varilumi.com/wp-content/uploads/調色商品1000x1000-1-300x300.jpg",
+   "link": "https://www.varilumi.com/product/recessed-downlight-7-9cm-8-12w-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 14693,
+   "name": "深凹護眼抗閃防眩 【調色型】崁燈",
+   "price": 480,
+   "image": "https://www.varilumi.com/wp-content/uploads/調色型商品-300x300.png",
+   "link": "https://www.varilumi.com/product/deep-recessed-anti-glare-led-downlight-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 4303,
+   "name": "爆亮款 20cm/30W 【調光型】散光崁燈",
+   "price": 580,
+   "image": "https://www.varilumi.com/wp-content/uploads/調光商品_全白框-300x300.jpg",
+   "link": "https://www.varilumi.com/product/recessed-light-30w-20cm-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 3482,
+   "name": "爆亮款 20cm/30W 【調色型】散光崁燈",
+   "price": 680,
+   "image": "https://www.varilumi.com/wp-content/uploads/調色型_全白框_商品1000x1000-300x300.jpg",
+   "link": "https://www.varilumi.com/product/recessed-light-30w-20cm-color-adjustable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  }
+ ],
+ "track": [
+  {
+   "id": 8514,
+   "name": "22W COB投射【調光型】軌道燈",
+   "price": 360,
+   "image": "https://www.varilumi.com/wp-content/uploads/調光商品_800x800-2-300x300.jpg",
+   "link": "https://www.varilumi.com/product/tracklight-22w-short-projector-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 13932,
+   "name": "15W 迷你投射型 【調光型】軌道燈",
+   "price": 390,
+   "image": "https://www.varilumi.com/wp-content/uploads/迷你軌道燈-2-300x300.png",
+   "link": "https://www.varilumi.com/product/tracklight-15w-short-projector-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 4227,
+   "name": "15W 變焦COB 【調光型】軌道燈",
+   "price": 420,
+   "image": "https://www.varilumi.com/wp-content/uploads/24-300x300.png",
+   "link": "https://www.varilumi.com/product/tracklight-15w-zoom-cob-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 13948,
+   "name": "15W 迷你投射型 【調色型】軌道燈",
+   "price": 450,
+   "image": "https://www.varilumi.com/wp-content/uploads/迷你軌道燈-4-1-300x300.png",
+   "link": "https://www.varilumi.com/product/tracklight-15w-short-projector-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 4217,
+   "name": "25W /15W 廣角散光 【調光型】軌道筒燈",
+   "price": 450,
+   "image": "https://www.varilumi.com/wp-content/uploads/供應商黑白外觀_800x800-300x300.jpg",
+   "link": "https://www.varilumi.com/product/tracklight-25w-wide-angle-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 4197,
+   "name": "15W 廣角散光 【調光型】軌道燈",
+   "price": 450,
+   "image": "https://www.varilumi.com/wp-content/uploads/product_l_1378364-300x300.jpg",
+   "link": "https://www.varilumi.com/product/tracklight-15w-wide-angle-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 4208,
+   "name": "15W 廣角散光 【調色型】軌道燈/軌道筒燈",
+   "price": 460,
+   "image": "https://www.varilumi.com/wp-content/uploads/商品混桶_800x800-300x300.jpg",
+   "link": "https://www.varilumi.com/product/tracklight-15w-wide-angle-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 4241,
+   "name": "15W 變焦COB 【調色型】軌道燈",
+   "price": 520,
+   "image": "https://www.varilumi.com/wp-content/uploads/25-300x300.png",
+   "link": "https://www.varilumi.com/product/tracklight-15w-zoom-cob-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 4248,
+   "name": "22W 變焦COB 【調光型】軌道燈",
+   "price": 660,
+   "image": "https://www.varilumi.com/wp-content/uploads/WP新官網商品圖封面-19-300x300.png",
+   "link": "https://www.varilumi.com/product/22w-zoom-cob-dimmable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 4259,
+   "name": "22W 變焦COB 【調色型】軌道燈",
+   "price": 690,
+   "image": "https://www.varilumi.com/wp-content/uploads/WP新官網商品圖封面-20-300x300.png",
+   "link": "https://www.varilumi.com/product/tracklight-22w-zoom-cob-color-tunable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  }
+ ],
+ "ceiling": [
+  {
+   "id": 2872,
+   "name": "吸頂投射燈- 15W 【調光型】COB光源",
+   "price": 420,
+   "image": "https://www.varilumi.com/wp-content/uploads/調光商品_800x800-300x300.jpg",
+   "link": "https://www.varilumi.com/product/ceiling-downlight-15w-dimmable-cob/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 5028,
+   "name": "吸頂投射燈- 15W 【調色型】COB光源",
+   "price": 490,
+   "image": "https://www.varilumi.com/wp-content/uploads/吸頂投射燈-15W-COB光源-300x300.jpg",
+   "link": "https://www.varilumi.com/product/ceiling-projector-light-15w-color-tunable-cob/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 2903,
+   "name": "吸頂筒燈- 15W【調光型】散光",
+   "price": 490,
+   "image": "https://www.varilumi.com/wp-content/uploads/調光商品_1000x1000-300x300.jpg",
+   "link": "https://www.varilumi.com/product/ceiling-downlight-15w-dimmable-diffused/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 5011,
+   "name": "吸頂筒燈- 15W【調色型】散光",
+   "price": 520,
+   "image": "https://www.varilumi.com/wp-content/uploads/外觀_漸黃_800x800-300x300.jpg",
+   "link": "https://www.varilumi.com/product/ceiling-downlight-15w-color-tunable-diffused/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 2932,
+   "name": "吸頂筒燈- 25W 【調光型】散光",
+   "price": 580,
+   "image": "https://www.varilumi.com/wp-content/uploads/吸頂筒燈-15W調色調光型散光-300x300.jpg",
+   "link": "https://www.varilumi.com/product/ceiling-downlight-25w-dimmable-diffused/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  },
+  {
+   "id": 7174,
+   "name": "壁切吸頂燈35W-85W【調色型】-客製你的專屬燈光模式",
+   "price": 1580,
+   "image": "https://www.varilumi.com/wp-content/uploads/飛利明Varilumi吸頂燈-商品封面-1-300x300.png",
+   "link": "https://www.varilumi.com/product/ceilinglight-wall-switch-dimmable/",
+   "functions": [
+    "tri-color-night"
+   ]
+  },
+  {
+   "id": 2720,
+   "name": "壁切吸頂燈35W-85W【調光型】-客製你的專屬燈光模式",
+   "price": 1580,
+   "image": "https://www.varilumi.com/wp-content/uploads/飛利明Varilumi吸頂燈-商品封面-1-300x300.png",
+   "link": "https://www.varilumi.com/product/ceilinglight-35w-85w-wall-switch-dimmable-color-tunable/",
+   "functions": [
+    "four-step",
+    "stepless"
+   ]
+  }
+ ]
+}

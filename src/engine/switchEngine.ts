@@ -10,6 +10,17 @@ import { FLASH_MS, FUNCTIONS, MIN_LEVEL, QUICK_MS, RAMP_MS, type FunctionId } fr
 
 export type Action = 'first' | 'quick' | 'slow' | 'off' | null;
 
+/** What the last press did, for UI explanations. */
+export type EngineEvent =
+  | 'first' | 'off'
+  | 'step'          // quick → next step
+  | 'ramp-start'    // quick → start 6 s ramp
+  | 'ramp-stop'     // quick during ramp → hold level
+  | 'ramp-done'     // ramp reached 100% by itself
+  | 'slow-default'  // slow → default state
+  | 'slow-memory'   // slow → memorised state
+  | null;
+
 export interface EngineOptions {
   functionId: FunctionId;
   memory: boolean;
@@ -29,6 +40,7 @@ export interface LightState {
   rampProgress: number;
   flashing: boolean;
   lastAction: Action;
+  event: EngineEvent;
   /** ms since the switch went off (for the quick/slow countdown ring), null when on */
   offFor: number | null;
 }
@@ -51,6 +63,7 @@ export class SwitchEngine {
   private memLevel = 1;
   private flashAt: number | null = null;
   private lastAction: Action = null;
+  private event: EngineEvent = null;
 
   constructor(opts: EngineOptions) {
     this.opts = { ...opts };
@@ -76,6 +89,7 @@ export class SwitchEngine {
       this.memLevel = 1;
       this.flashAt = null;
       this.lastAction = null;
+      this.event = null;
     }
   }
 
@@ -91,6 +105,7 @@ export class SwitchEngine {
       const doneAt = this.rampStart + RAMP_MS;
       this.rampStart = null;
       this.held = 1;
+      if (this.switchOn) this.event = 'ramp-done';
       if (this.opts.memory) {
         this.memLevel = 1;
         this.flashAt = doneAt; // flash once to show "memorised at 100%"
@@ -105,6 +120,7 @@ export class SwitchEngine {
       this.switchOn = false;
       this.offAt = now;
       this.lastAction = 'off';
+      this.event = 'off';
       return 'off';
     }
 
@@ -117,8 +133,10 @@ export class SwitchEngine {
     if (this.def.mode === 'steps') {
       if (quick) {
         this.stepIndex = (this.stepIndex + 1) % this.def.steps.length;
+        this.event = 'step';
       } else {
         this.stepIndex = this.opts.memory ? this.memStep : 0;
+        this.event = action === 'first' ? 'first' : this.opts.memory ? 'slow-memory' : 'slow-default';
       }
       if (this.opts.memory) this.memStep = this.stepIndex;
     } else {
@@ -128,11 +146,14 @@ export class SwitchEngine {
         this.held = rampLevel(this.offAt! - this.rampStart!);
         this.rampStart = null;
         if (this.opts.memory) this.memLevel = this.held;
+        this.event = 'ramp-stop';
       } else if (quick) {
         this.rampStart = now;
+        this.event = 'ramp-start';
       } else {
         this.rampStart = null;
         this.held = this.opts.memory ? this.memLevel : 1;
+        this.event = action === 'first' ? 'first' : this.opts.memory ? 'slow-memory' : 'slow-default';
       }
     }
     this.lastAction = action;
@@ -170,6 +191,7 @@ export class SwitchEngine {
       rampProgress,
       flashing,
       lastAction: this.lastAction,
+      event: this.event,
       offFor: this.switchOn || this.offAt === null ? null : now - this.offAt,
     };
   }

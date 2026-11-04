@@ -1,0 +1,233 @@
+/**
+ * WebGL light-layer compositor.
+ *
+ * Each layer image is one light group rendered alone at 100% (linear radiance, squeezed into 8-bit by
+ * blender/encode_layers.py). Light adds linearly, so
+ *     radiance = base + Σ weight_i · layer_i
+ * is physically exact. We then apply eye adaptation, a filmic tone curve and sRGB output.
+ */
+
+export interface LayerMeta {
+  width: number;
+  height: number;
+  layers: Record<string, { meanLum: number }>;
+}
+
+const MAX_LAYERS = 4;
+/** Dusk-window ambient strength relative to the render, so night-light glow stays the hero at 1%. */
+const BASE_WEIGHT = 0.45;
+/** Mean scene luminance that "all lights on" is normalised to, so every room shows at a similar brightness. */
+const TARGET_LUM = 0.42;
+
+const VS = `
+attribute vec2 p;
+varying vec2 uv;
+void main(){ uv = vec2(p.x*0.5+0.5, 0.5-p.y*0.5); gl_Position = vec4(p,0.0,1.0); }`;
+
+const FS = `
+precision highp float;
+varying vec2 uv;
+uniform sampler2D uBase;
+uniform sampler2D uL0; uniform sampler2D uL1; uniform sampler2D uL2; uniform sampler2D uL3;
+uniform float uW0; uniform float uW1; uniform float uW2; uniform float uW3;
+uniform float uExposure;
+uniform float uBaseW;
+uniform float uGrain;
+uniform float uTime;
+
+vec3 dec(vec3 e){ vec3 y = min(pow(e, vec3(2.2)), vec3(0.996)); return y / (1.0 - y); }
+
+vec3 aces(vec3 x){ // Narkowicz ACES fit
+  const float a=2.51, b=0.03, c=2.43, d=0.59, e=0.14;
+  return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+}
+vec3 toSRGB(vec3 c){
+  return mix(c*12.92, 1.055*pow(c, vec3(1.0/2.4)) - 0.055, step(0.0031308, c));
+}
+float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)) + uTime) * 43758.5453); }
+
+void main(){
+  vec3 L = uBaseW * dec(texture2D(uBase, uv).rgb);
+  if (uW0 > 0.0) L += uW0 * dec(texture2D(uL0, uv).rgb);
+  if (uW1 > 0.0) L += uW1 * dec(texture2D(uL1, uv).rgb);
+  if (uW2 > 0.0) L += uW2 * dec(texture2D(uL2, uv).rgb);
+  if (uW3 > 0.0) L += uW3 * dec(texture2D(uL3, uv).rgb);
+  vec3 c = toSRGB(aces(L * uExposure * 0.8));
+  // sensor-like grain only when the eye/camera has "opened up" in a dark room
+  c += (hash(uv * 1024.0) - 0.5) * uGrain;
+  gl_FragColor = vec4(c, 1.0);
+}`;
+
+export class Compositor {
+  private gl: WebGLRenderingContext;
+  private prog: WebGLProgram;
+  private tex: WebGLTexture[] = [];
+  private names: string[] = [];
+  private meta: LayerMeta | null = null;
+  private weights: number[] = [0, 0, 0, 0];
+  private exposure = 1;
+  private targetExposure = 1;
+  private raf = 0;
+  private last = 0;
+  private uni: Record<string, WebGLUniformLocation | null> = {};
+  ready = false;
+
+  static supported(): boolean {
+    try {
+      return !!document.createElement('canvas').getContext('webgl');
+    } catch {
+      return false;
+    }
+  }
+
+  constructor(private canvas: HTMLCanvasElement) {
+    const gl = canvas.getContext('webgl', { antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: true });
+    if (!gl) throw new Error('WebGL not available');
+    this.gl = gl;
+    const sh = (type: number, src: string) => {
+      const s = gl.createShader(type)!;
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) || 'shader');
+      return s;
+    };
+    const p = gl.createProgram()!;
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, VS));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(p);
+    gl.useProgram(p);
+    this.prog = p;
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(p, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    for (const n of ['uBase', 'uL0', 'uL1', 'uL2', 'uL3', 'uW0', 'uW1', 'uW2', 'uW3', 'uExposure', 'uBaseW', 'uGrain', 'uTime']) {
+      this.uni[n] = gl.getUniformLocation(p, n);
+    }
+  }
+
+  /** Load `base` plus up to four light layers from `${dir}/<name>.webp`. */
+  async load(dir: string, layerNames: string[], meta: LayerMeta): Promise<void> {
+    if (layerNames.length > MAX_LAYERS) throw new Error('too many layers');
+    const gl = this.gl;
+    this.ready = false;
+    const imgs = await Promise.all(['base', ...layerNames].map((n) => loadImage(`${dir}/${n}.webp`)));
+    this.tex.forEach((t) => gl.deleteTexture(t));
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    this.tex = imgs.map((img, i) => {
+      const t = gl.createTexture()!;
+      gl.activeTexture(gl.TEXTURE0 + i);
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    });
+    // unused samplers point at the base texture
+    ['uBase', 'uL0', 'uL1', 'uL2', 'uL3'].forEach((n, i) => gl.uniform1i(this.uni[n], i < this.tex.length ? i : 0));
+    this.names = layerNames;
+    this.meta = meta;
+    this.weights = [0, 0, 0, 0];
+    this.canvas.width = meta.width;
+    this.canvas.height = meta.height;
+    gl.viewport(0, 0, meta.width, meta.height);
+    this.targetExposure = this.computeExposure();
+    this.exposure = this.targetExposure;
+    this.ready = true;
+    this.draw(performance.now());
+  }
+
+  /** weights keyed by layer name (e.g. { recessed_6000: 0.5, recessed_3000: 0.5 }) */
+  setWeights(w: Record<string, number>): void {
+    this.weights = [0, 1, 2, 3].map((i) => Math.max(0, w[this.names[i]] ?? 0));
+    this.targetExposure = this.computeExposure();
+  }
+
+  /** Eye adaptation: darker scene → open up, but only partially, so dim still reads as dim. */
+  private computeExposure(): number {
+    if (!this.meta) return 1;
+    const L = this.meta.layers;
+    const base = (L.base?.meanLum ?? 0.05) * BASE_WEIGHT;
+    // reference: every group at full power, one colour channel each
+    const groups = new Set(this.names.map((n) => n.replace(/_\d+$/, '')));
+    let ref = base;
+    groups.forEach((g) => {
+      const k = this.names.find((n) => n.startsWith(g + '_'));
+      if (k) ref += L[k]?.meanLum ?? 0;
+    });
+    let cur = base;
+    this.names.forEach((n, i) => (cur += this.weights[i] * (L[n]?.meanLum ?? 0)));
+    // normalise "all on" to TARGET_LUM, then open up partially as the room gets darker
+    const norm = Math.pow(TARGET_LUM / ref, 0.85);
+    const adapt = Math.min(Math.max(Math.pow(ref / Math.max(cur, 1e-4), 0.36), 1), 6);
+    return norm * adapt;
+  }
+
+  private normExposure(): number {
+    if (!this.meta) return 1;
+    const L = this.meta.layers;
+    let ref = (L.base?.meanLum ?? 0.05) * BASE_WEIGHT;
+    new Set(this.names.map((n) => n.replace(/_\d+$/, ''))).forEach((g) => {
+      const k = this.names.find((n) => n.startsWith(g + '_'));
+      if (k) ref += L[k]?.meanLum ?? 0;
+    });
+    return Math.pow(TARGET_LUM / ref, 0.85);
+  }
+
+  start(): void {
+    const loop = (t: number) => {
+      this.draw(t);
+      this.raf = requestAnimationFrame(loop);
+    };
+    this.raf = requestAnimationFrame(loop);
+  }
+
+  stop(): void {
+    cancelAnimationFrame(this.raf);
+  }
+
+  private draw(t: number): void {
+    if (!this.ready) return;
+    const dt = this.last ? Math.min((t - this.last) / 1000, 0.1) : 0;
+    this.last = t;
+    // adaptation: brightening is fast (pupil closes), darkening is slower
+    const tau = this.targetExposure > this.exposure ? 0.9 : 0.25;
+    this.exposure += (this.targetExposure - this.exposure) * (1 - Math.exp(-dt / tau));
+    const gl = this.gl;
+    gl.useProgram(this.prog);
+    this.weights.forEach((w, i) => gl.uniform1f(this.uni[`uW${i}`], w));
+    gl.uniform1f(this.uni.uExposure, this.exposure);
+    gl.uniform1f(this.uni.uBaseW, BASE_WEIGHT);
+    gl.uniform1f(this.uni.uGrain, Math.min(Math.max((this.exposure / this.normExposure() - 1.4) * 0.012, 0), 0.03));
+    gl.uniform1f(this.uni.uTime, (t / 1000) % 100);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  destroy(): void {
+    this.stop();
+    this.tex.forEach((t) => this.gl.deleteTexture(t));
+  }
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error(`failed to load ${src}`));
+    img.src = src;
+  });
+}
+
+/** Split a fixture's (level, kelvin) into weights for its 6000K and 3000K layers (mired-linear mix). */
+export function colorWeights(level: number, kelvin: number): { w6000: number; w3000: number } {
+  const m = 1e6 / kelvin;
+  const m6 = 1e6 / 6000;
+  const m3 = 1e6 / 3000;
+  const t = Math.min(Math.max((m - m6) / (m3 - m6), 0), 1);
+  return { w6000: level * (1 - t), w3000: level * t };
+}

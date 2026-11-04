@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SwitchEngine, rampLevel } from './switchEngine';
 import { KELVIN, RAMP_MS, type FunctionId } from './functions';
 
-const make = (functionId: FunctionId, memory = false, kelvin = KELVIN.soft) =>
+const make = (functionId: FunctionId, memory = false, kelvin: number = KELVIN.soft) =>
   new SwitchEngine({ functionId, memory, kelvin });
 
 /** Drive an engine with a simple virtual clock. */
@@ -29,6 +29,7 @@ describe('經典四段調光', () => {
       seen.push(d.s.level);
     }
     expect(seen).toEqual([1, 0.5, 0.25, 0.01, 1]);
+    expect(d.s.event).toBe('step');
   });
 
   it('slow toggle returns to 100% without memory', () => {
@@ -36,12 +37,14 @@ describe('經典四段調光', () => {
     d.on(); d.quick(); d.quick(); // 25%
     expect(d.slow()).toBe('slow');
     expect(d.s.level).toBe(1);
+    expect(d.s.event).toBe('slow-default');
   });
 
   it('slow toggle keeps the last step with memory', () => {
     const d = driver(make('four-step', true));
     d.on(); d.quick(); d.quick(); // 25%
     d.slow();
+    expect(d.s.event).toBe('slow-memory');
     expect(d.s.level).toBe(0.25);
     expect(d.s.stepIndex).toBe(2);
   });
@@ -87,6 +90,7 @@ describe('經典無段調光', () => {
     d.wait(RAMP_MS);
     expect(d.s.ramping).toBe(false);
     expect(d.s.level).toBe(1);
+    expect(d.s.event).toBe('ramp-done');
   });
 
   it('a second quick toggle stops the ramp at the reached level', () => {
@@ -94,6 +98,7 @@ describe('經典無段調光', () => {
     d.on(); d.quick();
     d.wait(3000);
     d.quick();
+    expect(d.s.event).toBe('ramp-stop');
     const expected = rampLevel(3000 + 10); // level when the switch went off
     expect(d.s.ramping).toBe(false);
     expect(d.s.level).toBeCloseTo(expected, 4);
