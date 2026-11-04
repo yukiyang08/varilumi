@@ -243,7 +243,7 @@ def study():
                 continue
             C.box(f"Book{s}", (t, 0.22, h), (x + t / 2, D - 0.2, z + 0.0125 + h / 2), C.mat_principled(f"Book{s}{x:.2f}", random.choice(palette), rough=0.6))
             x += t + 0.003
-    _plant("Plant", W / 2 - 0.3, 1.6, height=1.3, seed=11)
+    _plant("Plant", W / 2 - 0.32, D - 1.35, height=1.3, seed=11)
     _painting("StudyArt", 1.2, D, 1.75, 0.5, 0.65, [(0.85, 0.80, 0.70), (0.25, 0.32, 0.35), (0.70, 0.50, 0.30)], scale=0.5, kind="BANDS")
     return Layout(
         W, D, H, cam=(0.2, 0.35, 1.45), cam_target=(-0.1, D, 1.3),
