@@ -131,10 +131,10 @@ def wave_curtains(wall_x, y_center, width, room_h, gap=0.06):
 
 
 def _sheer():
-    m = C.mat_principled("Sheer", (0.88, 0.86, 0.82), rough=0.85)
+    # linen-look sheer: lets a soft glow through, but stays a fabric rather than a light panel
+    m = C.mat_principled("Sheer", (0.80, 0.77, 0.72), rough=0.9)
     b = m.node_tree.nodes["Principled BSDF"]
-    b.inputs["Transmission Weight"].default_value = 0.6
-    b.inputs["Alpha"].default_value = 0.92
+    b.inputs["Transmission Weight"].default_value = 0.3
     # faint vertical weave
     nt = m.node_tree
     tc = nt.nodes.new("ShaderNodeTexCoord")
