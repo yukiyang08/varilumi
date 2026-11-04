@@ -1,0 +1,15 @@
+{
+  "layers": {
+    "base": {
+      "meanLum": 0.0877
+    },
+    "recessed_3000": {
+      "meanLum": 0.04342
+    },
+    "recessed_6000": {
+      "meanLum": 0.04187
+    }
+  },
+  "width": 600,
+  "height": 400
+}

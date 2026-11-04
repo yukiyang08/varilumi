@@ -1,0 +1,15 @@
+{
+  "layers": {
+    "base": {
+      "meanLum": 0.10726
+    },
+    "ceiling_3000": {
+      "meanLum": 0.94746
+    },
+    "ceiling_6000": {
+      "meanLum": 0.91897
+    }
+  },
+  "width": 600,
+  "height": 400
+}
