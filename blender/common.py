@@ -77,12 +77,43 @@ def mat_wood(name="Wood", base=(0.36, 0.22, 0.12), plank=0.18, rough=0.38):
 
 
 def mat_fabric(name, color, rough=0.85):
+    """Upholstery: sheen + a fine basket weave (two crossed wave textures) + fuzz noise."""
     m = mat_principled(name, color, rough=rough, sheen=0.6)
     nt = m.node_tree
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    wx = nt.nodes.new("ShaderNodeTexWave")
+    wx.bands_direction = "X"
+    wx.inputs["Scale"].default_value = 180.0
+    wz = nt.nodes.new("ShaderNodeTexWave")
+    wz.bands_direction = "Z"
+    wz.inputs["Scale"].default_value = 180.0
     noise = nt.nodes.new("ShaderNodeTexNoise")
     noise.inputs["Scale"].default_value = 400.0
+    mul = nt.nodes.new("ShaderNodeMath")
+    mul.operation = "MULTIPLY"
+    add = nt.nodes.new("ShaderNodeMath")
+    add.operation = "ADD"
     bump = nt.nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.08
+    bump.inputs["Strength"].default_value = 0.12
+    for w in (wx, wz):
+        nt.links.new(tc.outputs["Object"], w.inputs["Vector"])
+    nt.links.new(wx.outputs["Fac"], mul.inputs[0])
+    nt.links.new(wz.outputs["Fac"], mul.inputs[1])
+    nt.links.new(mul.outputs["Value"], add.inputs[0])
+    nt.links.new(noise.outputs["Fac"], add.inputs[1])
+    nt.links.new(add.outputs["Value"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], nt.nodes["Principled BSDF"].inputs["Normal"])
+    return m
+
+
+def add_wall_texture(m, strength=0.04):
+    """Painted plaster: a faint orange-peel bump so walls catch grazing light (wall-wash, cove glow)."""
+    nt = m.node_tree
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 140.0
+    noise.inputs["Detail"].default_value = 6.0
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = strength
     nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
     nt.links.new(bump.outputs["Normal"], nt.nodes["Principled BSDF"].inputs["Normal"])
     return m
@@ -434,7 +465,7 @@ def world(color=(0.01, 0.012, 0.018), strength=1.0):
     return w
 
 
-def window_with_curtains(wall_x, y_center, z_center, width, height, room_h, sky_strength=0.35, gap=0.06):
+def window_with_curtains(wall_x, y_center, z_center, width, height, room_h, sky_strength=0.35, gap=0.06, curtains=True):
     """Window on a side wall (x = wall_x) seen through closed sheer curtains with a centre gap.
     Sky glow is an ambient-only emitter, so it lives in the base layer only."""
     import random
@@ -458,6 +489,8 @@ def window_with_curtains(wall_x, y_center, z_center, width, height, room_h, sky_
         box("WinJamb", (0.05, 0.04, height + 0.04), (wall_x + side * 0.02, y_center + dy, z_center), frame)
     for dz in (-height / 2, height / 2):
         box("WinRail", (0.05, width + 0.04, 0.04), (wall_x + side * 0.02, y_center, z_center + dz), frame)
+    if not curtains:
+        return
     # curtain rod + two sheer panels made of soft folds, leaving a gap in the middle
     rod_mat = mat_principled("Rod", (0.12, 0.12, 0.12), rough=0.3, metallic=1.0)
     cx = wall_x + side * 0.12

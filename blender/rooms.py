@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 import common as C
 import fixtures as F
+import props as P
 
 ROOMS = ("living", "bedroom", "dining", "study")
 FIXTURES = ("recessed", "track", "ceiling", "cove")
@@ -56,25 +57,13 @@ def _painting(name, x, y_wall, z, w, h, colors, scale=0.9, kind="RINGS"):
 
 
 def _plant(name, x, y, height=1.6, seed=4):
-    pot = C.mat_principled(f"{name}Pot", (0.28, 0.27, 0.26), rough=0.7)
-    C.cyl(f"{name}Pot", 0.17, 0.42, (x, y, 0.21), pot, bevel=0.01)
-    leaf = C.mat_principled(f"{name}Leaf", (0.06, 0.16, 0.06), rough=0.55)
-    stem = C.mat_principled(f"{name}Stem", (0.10, 0.07, 0.04), rough=0.7)
-    C.cyl(f"{name}Stem", 0.012, height - 0.4, (x, y, 0.4 + (height - 0.4) / 2), stem)
-    random.seed(seed)
-    for i in range(46):
-        h = random.uniform(0.55, height)
-        ang = random.uniform(0, 6.283)
-        rr = random.uniform(0.08, 0.32) * (1.15 - (h - 0.55) / height)
-        o = C.sphere(f"{name}Leaf{i}", 0.085, (x + rr * math.cos(ang), y + rr * math.sin(ang), h),
-                     scale=(1.0, 0.12, 0.42), mat=leaf, sub=2)
-        o.rotation_euler = (random.uniform(-0.6, 0.6), random.uniform(-0.6, 0.6), ang)
+    P.plant(name, x, y, height=height, seed=seed)
 
 
 def _base_room(W, D, H, accent_rgb, floor_rgb):
-    wall = C.mat_principled("WallPaint", (0.80, 0.78, 0.75), rough=0.92)
-    accent = C.mat_principled("AccentWall", accent_rgb, rough=0.95)
-    ceil = C.mat_principled("CeilingPaint", (0.86, 0.86, 0.85), rough=0.95)
+    wall = C.add_wall_texture(C.mat_principled("WallPaint", (0.80, 0.78, 0.75), rough=0.92))
+    accent = C.add_wall_texture(C.mat_principled("AccentWall", accent_rgb, rough=0.95))
+    ceil = C.add_wall_texture(C.mat_principled("CeilingPaint", (0.86, 0.86, 0.85), rough=0.95), 0.02)
     floor = C.mat_wood("OakFloor", base=floor_rgb)
     C.room(W, D, H, wall, ceil, floor, back_mat=accent)
     return ceil
@@ -116,6 +105,15 @@ def living():
     _plant("Plant", 1.85, D - 0.45)
     C.box("Cabinet", (0.42, 1.1, 0.5), (W / 2 - 0.22, 3.2, 0.25), C.mat_principled("CabWhite", (0.84, 0.83, 0.8), rough=0.35), bevel=0.006)
     C.cyl("CabVase", 0.07, 0.3, (W / 2 - 0.22, 3.0, 0.65), ceramic, bevel=0.01)
+    P.books("CabBooks", W / 2 - 0.22, 3.45, 0.5, n=3, rot=1.57, seed=2)
+    P.door(W, 1.75)
+    P.wall_switch(W, 2.42)
+    P.socket(W, 3.95)
+    P.socket_back(D, -1.62)
+    top = P.side_table("SideTable", -1.62, D - 0.45)
+    P.table_lamp("Lamp", -1.62, D - 0.45, top)
+    P.throw_blanket("Throw", 0.95, D - 0.55, 0.52, color=(0.66, 0.55, 0.42))
+    P.mug("Mug", -0.28, ty - 0.12, 0.4375)
     return Layout(
         W, D, H, cam=(0.35, 0.75, 1.30), cam_target=(0.0, D, 1.45),
         recessed=[(-1.45, 2.85), (0, 2.85), (1.45, 2.85), (-1.45, 3.85), (0, 3.85), (1.45, 3.85)],
@@ -154,7 +152,18 @@ def bedroom():
     handle = C.mat_principled("Handle", (0.1, 0.1, 0.1), rough=0.3, metallic=1.0)
     for dy in (-0.05, 0.05):
         C.box("Handle", (0.02, 0.012, 0.3), (W / 2 - 0.605, 1.3 + dy, 1.1), handle)
-    C.box("Rug", (2.2, 1.4, 0.012), (0, by - 1.3, 0.006), C.mat_fabric("Rug", (0.66, 0.62, 0.57), rough=0.95))
+    rug = C.mat_fabric("Rug", (0.66, 0.62, 0.57), rough=0.95)
+    P.rug_pattern(rug, scale=4.0)
+    C.box("Rug", (2.2, 1.4, 0.012), (0, by - 1.3, 0.006), rug)
+    P.door(W, 2.75)
+    P.wall_switch(W, 3.42)
+    P.socket(W, 4.3)
+    zt = P.books("NSBooks", -1.25, D - 0.3, 0.5, n=2, seed=5)
+    P.glass("NSGlass", 1.18, D - 0.3, 0.5)
+    bench = C.mat_fabric("Bench", (0.45, 0.40, 0.34))
+    C.box("BenchTop", (1.2, 0.38, 0.1), (0, by - 1.3, 0.42), bench, bevel=0.03)
+    for bx in (-0.52, 0.52):
+        C.box("BenchLeg", (0.04, 0.3, 0.37), (bx, by - 1.3, 0.185), C.mat_principled("BenchLeg", (0.12, 0.08, 0.05), rough=0.4))
     _painting("BedArt", 0, D, 1.65, 0.9, 0.5, [(0.55, 0.62, 0.66), (0.86, 0.82, 0.74), (0.70, 0.58, 0.45)], scale=0.6, kind="BANDS")
     return Layout(
         W, D, H, cam=(0.3, 0.35, 1.45), cam_target=(-0.05, D, 1.62),
@@ -193,6 +202,17 @@ def dining():
     side = C.mat_wood("SideboardWood", base=(0.30, 0.20, 0.12), plank=0.4, rough=0.35)
     C.box("Sideboard", (1.8, 0.45, 0.8), (0, D - 0.23, 0.4), side, bevel=0.008)
     C.cyl("SideVase", 0.08, 0.35, (0.6, D - 0.25, 0.975), ceramic, bevel=0.01)
+    runner = C.mat_fabric("Runner", (0.42, 0.48, 0.44))
+    C.box("Runner", (0.36, 0.86, 0.004), (0, ty, 0.772), runner)
+    for i, (gx, gy) in enumerate([(-0.3, ty - 0.2), (0.6, ty - 0.2), (-0.6, ty + 0.2), (0.3, ty + 0.2)]):
+        P.glass(f"DGlass{i}", gx, gy, 0.77)
+    steel = P.brushed_steel()
+    for hx in (-0.6, 0.0, 0.6):
+        C.box("SideHandle", (0.12, 0.012, 0.012), (hx, D - 0.46, 0.62), steel, bevel=0.004)
+        C.box("SideDoorLine", (0.004, 0.003, 0.7), (hx - 0.3 if hx < 0.6 else hx + 0.3, D - 0.452, 0.4), C.mat_principled("Seam", (0.1, 0.07, 0.05), rough=0.6))
+    P.door(W, 1.5)
+    P.wall_switch(W, 2.17)
+    P.socket_back(D, -1.2)
     _painting("DinArt", 0, D, 1.7, 1.2, 0.7, [(0.20, 0.32, 0.30), (0.88, 0.80, 0.62), (0.75, 0.42, 0.22)], scale=0.7)
     _plant("Plant", W / 2 - 0.35, D - 0.4, height=1.5, seed=9)
     return Layout(
@@ -244,6 +264,19 @@ def study():
             C.box(f"Book{s}", (t, 0.22, h), (x + t / 2, D - 0.2, z + 0.0125 + h / 2), C.mat_principled(f"Book{s}{x:.2f}", random.choice(palette), rough=0.6))
             x += t + 0.003
     _plant("Plant", W / 2 - 0.32, D - 1.35, height=1.3, seed=11)
+    P.door(W, 1.3)
+    P.wall_switch(W, 1.97)
+    P.socket_back(D, 0.9, z=0.95)
+    P.table_lamp("DeskLamp", 0.95, D - 0.2, 0.7575, height=0.38)
+    P.mug("DeskMug", -0.1, D - 0.5, 0.7575, color=(0.20, 0.28, 0.32))
+    C.cyl("PenPot", 0.035, 0.1, (-0.25, D - 0.25, 0.8075), C.mat_principled("PenPot", (0.75, 0.72, 0.66), rough=0.4))
+    rug = C.mat_fabric("StudyRug", (0.55, 0.52, 0.47), rough=0.95)
+    P.rug_pattern(rug, scale=5.0)
+    C.box("StudyRug", (1.6, 1.2, 0.01), (0.35, D - 1.1, 0.005), rug)
+    for k in range(5):
+        a = k * 2 * math.pi / 5
+        C.box(f"ChairFoot{k}", (0.3, 0.03, 0.025), (0.35 + 0.15 * math.cos(a), D - 1.05 + 0.15 * math.sin(a), 0.05), leg, rot=(0, 0, a))
+        C.sphere(f"Caster{k}", 0.022, (0.35 + 0.29 * math.cos(a), D - 1.05 + 0.29 * math.sin(a), 0.022), mat=leg)
     _painting("StudyArt", 1.2, D, 1.75, 0.5, 0.65, [(0.85, 0.80, 0.70), (0.25, 0.32, 0.35), (0.70, 0.50, 0.30)], scale=0.5, kind="BANDS")
     return Layout(
         W, D, H, cam=(0.2, 0.35, 1.45), cam_target=(-0.1, D, 1.3),
@@ -260,10 +293,12 @@ BUILDERS = {"living": living, "bedroom": bedroom, "dining": dining, "study": stu
 def build(room, fixture):
     assert room in ROOMS and fixture in FIXTURES, (room, fixture)
     C.reset_scene()
+    P.reset()
     L = BUILDERS[room]()
     eff_h = L.H - F.COVE_DROP if fixture == "cove" else L.H   # curtains stop under the cove soffit
     y, z, w, h = L.window
-    C.window_with_curtains(-L.W / 2, y, z, w, h, eff_h, sky_strength=L.extra.get("sky", 0.35))
+    C.window_with_curtains(-L.W / 2, y, z, w, h, eff_h, sky_strength=L.extra.get("sky", 0.35), curtains=False)
+    P.wave_curtains(-L.W / 2, y, w, eff_h)
     F.place(fixture, L)
     C.cut_ceiling_holes(L.H)
     C.world((0.004, 0.005, 0.009), 1.0)
