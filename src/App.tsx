@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FUNCTIONS, QUICK_MS, kelvinLabel, type FunctionId } from './engine/functions';
+import { FUNCTIONS, QUICK_MS, SLOW_GAP_MS, kelvinLabel, type FunctionId } from './engine/functions';
 import { SwitchEngine } from './engine/switchEngine';
 import { colorWeights } from './render/compositor';
 import { getSetup, powerText, type FixtureId, type RoomId } from './scenes';
@@ -10,6 +10,7 @@ import { TUT_STEPS, Tutorial } from './components/Tutorial';
 import { MobileLayout } from './components/MobileLayout';
 import { Wizard, type WizardStep } from './components/Wizard';
 import { Breadcrumb } from './components/Breadcrumb';
+import type { FingerTap } from './components/WallSwitch';
 import { QuickPicker } from './components/QuickPicker';
 import { switchFeedback } from './feedback';
 
@@ -79,6 +80,7 @@ export default function App() {
   const [tutStep, setTutStep] = useState<number | null>(() => (store.get(TUT_KEY) ? null : 0));
   const [presses, setPresses] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [finger, setFinger] = useState<FingerTap | null>(null);
 
   // animation clock + LED soft-start smoothing + usage tracking
   const [now, setNow] = useState(() => performance.now());
@@ -143,28 +145,39 @@ export default function App() {
     setPresses((n) => n + 1);
   }, [advanceTutorial]);
 
-  /** ⚡快切 / 🐢慢切 buttons: flip the switch off, then on again after `gap` ms, exactly as a hand would. */
+  /**
+   * ⚡快切 / 🐢慢切 buttons: a hand flips the switch off, then on again after `gap` ms, exactly as a person
+   * would. Each tap starts the finger animation and flips the switch when the fingertip touches the rocker.
+   */
   const runSequence = useCallback(
     (gap: number) => {
+      const TOUCH_MS = 250; // finger reaches the rocker ~250 ms into its 520 ms tap animation
+      const tap = (at: number) =>
+        setTimeout(() => {
+          const isOn = engine.current.state(performance.now()).switchOn;
+          setFinger((f) => ({ n: (f?.n ?? 0) + 1, target: isOn ? 'bottom' : 'top' }));
+          setTimeout(press, TOUCH_MS);
+        }, at);
       const st = engine.current.state(performance.now());
       setBusy(true);
-      const done = () => {
-        press();
-        setBusy(false);
-      };
+      let end: number;
       if (st.switchOn) {
-        press();
-        setTimeout(done, gap);
+        tap(0); // off
+        tap(gap); // on again, `gap` ms after the first touch
+        end = gap + TOUCH_MS;
       } else {
-        // already off: for 慢切 make sure the off time has passed the quick window
+        // already off: for 慢切 make sure the off time has passed before switching back on
         const wait = gap >= QUICK_MS && st.offFor !== null && st.offFor < gap ? gap - st.offFor : 0;
-        setTimeout(done, wait);
+        tap(Math.max(wait - TOUCH_MS, 0));
+        end = Math.max(wait, TOUCH_MS);
       }
+      setTimeout(() => setBusy(false), end + 50);
+      setTimeout(() => setFinger(null), end + 650);
     },
     [press],
   );
   const onQuick = () => runSequence(350);
-  const onSlow = () => runSequence(QUICK_MS + 300);
+  const onSlow = () => runSequence(SLOW_GAP_MS);
 
   const configure = useCallback((patch: Partial<GroupConfig>) => {
     const e = engine.current;
@@ -354,6 +367,7 @@ export default function App() {
           onQuick={onQuick}
           onSlow={onSlow}
           busy={busy}
+          finger={finger}
           crumbs={crumbs}
           tut={tut}
           after={
@@ -387,6 +401,7 @@ export default function App() {
             onQuick={onQuick}
             onSlow={onSlow}
             busy={busy}
+            finger={finger}
             tutorial={tut ? <Tutorial step={tut.step} onSkip={tut.onSkip} onClose={tut.onClose} /> : null}
           />
         </div>

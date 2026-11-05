@@ -59,7 +59,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     ],
     colorSelectable: true,
     summary: '一盞燈四種亮度，色溫固定。最經典、最直覺。',
-    howTo: ['開燈：100% 全亮', '連按兩下開關（快切）：跳到下一段', '100% → 50% → 25% → 1% 夜燈 → 循環', '關燈等 2 秒再開（慢切）：回到 100%'],
+    howTo: ['開燈：100% 全亮', '連按兩下開關（快切）：跳到下一段', '100% → 50% → 25% → 1% 夜燈 → 循環', '關燈超過 3 秒再開（慢切）：回到 100%'],
   },
   stepless: {
     id: 'stepless',
@@ -72,7 +72,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     steps: [{ level: 1, label: '100%' }],
     colorSelectable: true,
     summary: '1～100% 任意亮度。無段是「無限多段」，不是沒有段數。',
-    howTo: ['開燈：100% 全亮', '連按兩下（快切）：從夜燈開始約 6 秒慢慢變亮', '亮度剛好時再連按兩下：停在這個亮度', '關燈等 2 秒再開（慢切）：回到 100%'],
+    howTo: ['開燈：100% 全亮', '連按兩下（快切）：從 1% 夜燈開始，約 6 秒亮到 100%（先慢後快）', '亮度剛好時再連按兩下：停在這個亮度', '關燈超過 3 秒再開（慢切）：回到 100%'],
   },
   'tri-color-night': {
     id: 'tri-color-night',
@@ -90,7 +90,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     ],
     colorSelectable: false,
     summary: '白、柔、黃三種色溫全亮，第四段是黃光小夜燈。',
-    howTo: ['開燈：白光全亮', '連按兩下（快切）：白 → 柔 → 黃 → 黃光夜燈 → 循環', '關燈等 2 秒再開（慢切）：回到白光'],
+    howTo: ['開燈：白光全亮', '連按兩下（快切）：白 → 柔 → 黃 → 黃光夜燈 → 循環', '關燈超過 3 秒再開（慢切）：回到白光'],
   },
 };
 
@@ -100,4 +100,11 @@ export const FUNCTION_ORDER: FunctionId[] = ['four-step', 'stepless', 'tri-color
 export const QUICK_MS = 2000;
 export const RAMP_MS = 6000;
 export const MIN_LEVEL = 0.01;
+/** 無段調光 ramp, measured on the real driver (piecewise linear):
+ *  0–0.8 s hold 1% → 0.8–2.22 s rise to 12% (slope k) → 2.22–6 s rise to 100% (slope 3k). */
+export const RAMP_HOLD_MS = 800;
+export const RAMP_KNEE_MS = 2220;
+export const RAMP_KNEE_LEVEL = 0.12;
+/** How long the 🐢慢切 button keeps the switch off (the copy says 關超過3秒才開). */
+export const SLOW_GAP_MS = 3300;
 export const FLASH_MS = 260;

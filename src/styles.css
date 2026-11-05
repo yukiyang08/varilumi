@@ -490,3 +490,72 @@ a { color: var(--brand-ink); }
 .qp.qp-sheet .qp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @keyframes qpsheet { from { transform: translateY(100%); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .scene-fade { transition: none; } }
+
+/* ================================================================ Taiwanese wide-plate switch (v3) */
+.switch-wrap { width: auto; min-width: 200px; }
+.switch-wrap.compact { width: auto; min-width: 0; }
+.tw-frame { --w: 190px; --h: 100px; position: relative; width: var(--w); height: var(--h); }
+.switch-wrap.compact .tw-frame { --w: 150px; --h: 80px; }
+.tw-progress { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); overflow: visible; pointer-events: none; }
+.tw-progress .ring-progress { stroke-width: 3; vector-effect: non-scaling-stroke; fill: none; stroke: var(--quick); stroke-linecap: round; }
+
+.tw-plate {
+  position: absolute; inset: 0; padding: 0; border: 0; border-radius: 9px;
+  background: linear-gradient(165deg, #fdfcf9 0%, #efece6 55%, #e4e0d9 100%);
+  box-shadow: 0 1px 0 #fff inset, 0 -1px 0 rgba(60, 40, 10, 0.06) inset, 0 0 0 1px rgba(60, 40, 10, 0.1), 0 8px 18px rgba(60, 40, 10, 0.16), 0 2px 3px rgba(60, 40, 10, 0.12);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+/* the opening that holds the rocker: thin dark edge, chrome gaps top and bottom */
+.tw-well {
+  position: absolute; inset: 13% 9%; display: grid; border-radius: 3px; overflow: hidden;
+  grid-template-rows: var(--gt) 1fr var(--gb);
+  background: #1c1c1c; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition: grid-template-rows 0.09s ease-out;
+}
+.tw-plate.is-on .tw-well { --gt: 4%; --gb: 13%; }   /* top pressed in */
+.tw-plate.is-off .tw-well { --gt: 13%; --gb: 4%; }  /* bottom pressed in, top gap opens */
+.tw-gap { position: relative; background: linear-gradient(180deg, #121212 0%, #5d5d5d 35%, #bdbdbd 55%, #3a3a3a 80%, #161616 100%); }
+.tw-gap.bottom { background: linear-gradient(0deg, #121212 0%, #5d5d5d 35%, #bdbdbd 55%, #3a3a3a 80%, #161616 100%); }
+/* the locator: a thin, bright red line in the top gap (as in the photo), glowing only when OFF */
+.tw-led { position: absolute; left: 50%; top: 50%; width: 16%; height: 34%; transform: translate(-50%, -50%); border-radius: 999px; opacity: 0; transition: opacity 0.12s; }
+.tw-plate.is-off .tw-led {
+  opacity: 1;
+  background: linear-gradient(90deg, rgba(255, 40, 20, 0), #ff3a22 25%, #ff7a5c 50%, #ff3a22 75%, rgba(255, 40, 20, 0));
+  box-shadow: 0 0 6px 1px rgba(255, 50, 30, 0.75), 0 0 14px 2px rgba(255, 40, 20, 0.35);
+}
+.tw-rocker {
+  position: relative; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 9% 0;
+  transition: background 0.09s;
+}
+.tw-plate.is-on .tw-rocker { background: linear-gradient(180deg, #ddd8cf 0%, #efebe4 30%, #fbfaf6 70%, #fffefb 100%); }
+.tw-plate.is-off .tw-rocker { background: linear-gradient(0deg, #ddd8cf 0%, #efebe4 30%, #fbfaf6 70%, #fffefb 100%); }
+.tw-dot { width: 5px; height: 5px; border-radius: 50%; background: #e6e2db; box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.3), 0 1px 0 #fff; }
+.tw-plate:active .tw-rocker { filter: brightness(0.98); }
+.tw-plate:focus-visible { outline: 3px solid var(--brand-1); outline-offset: 4px; }
+
+/* the hand that operates the switch for the 快切 / 慢切 buttons */
+.tw-finger {
+  position: absolute; z-index: 3; width: 34px; height: 56px; pointer-events: none;
+  left: calc(var(--w) * 0.5 - 12px);
+  filter: drop-shadow(0 5px 6px rgba(40, 25, 10, 0.28));
+  animation: tw-tap 0.52s ease-out forwards;
+}
+.switch-wrap.compact .tw-finger { width: 28px; height: 46px; left: calc(var(--w) * 0.5 - 10px); }
+.tw-finger svg { width: 100%; height: 100%; display: block; }
+.tw-finger.top { top: calc(var(--h) * 0.24); }
+.tw-finger.bottom { top: calc(var(--h) * 0.56); }
+@keyframes tw-tap {
+  0% { transform: translate(70px, 46px) rotate(-14deg); opacity: 0; }
+  20% { opacity: 1; }
+  45% { transform: translate(0, 0) rotate(-14deg) scale(1); }
+  58% { transform: translate(0, 3px) rotate(-14deg) scale(0.93); }
+  75% { transform: translate(0, 0) rotate(-14deg) scale(1); }
+  100% { transform: translate(24px, 20px) rotate(-14deg); opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) { .tw-finger { display: none; } .tw-well, .tw-rocker { transition: none; } }
+
+/* 🐢慢切 on the left, ⚡快切 on the right */
+.m-dock-row .m-side.slow { order: 0; }
+.m-dock-row .switch-wrap { order: 1; }
+.m-dock-row .m-side.quick { order: 2; }
+.m-side small { white-space: nowrap; }

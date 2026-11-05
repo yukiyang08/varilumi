@@ -4,7 +4,7 @@ import type { Setup } from '../scenes';
 import { FunctionPicker, HowTo, MoreSettings, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
 import { SceneView } from './SceneView';
 import { TUT_DONE, TUT_STEPS } from './Tutorial';
-import { SwitchHint, WallSwitch } from './WallSwitch';
+import { SwitchHint, WallSwitch, type FingerTap } from './WallSwitch';
 
 interface Props {
   setup: Setup;
@@ -17,6 +17,7 @@ interface Props {
   onQuick: () => void;
   onSlow: () => void;
   busy: boolean;
+  finger: FingerTap | null;
   crumbs: React.ReactNode;
   tut: { step: number; onSkip: () => void; onClose: () => void } | null;
   after: React.ReactNode;
@@ -95,8 +96,8 @@ export function MobileLayout(p: Props) {
           </p>
         )}
         <div className="m-dock-row">
-          <QuickSlowButtons onQuick={p.onQuick} onSlow={p.onSlow} busy={p.busy} className="m-side" short />
-          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={p.onPress} label={setup.fixture.name} compact />
+          <QuickSlowButtons onQuick={p.onQuick} onSlow={p.onSlow} busy={p.busy} className="m-side" />
+          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={p.onPress} label={setup.fixture.name} compact finger={p.finger} />
         </div>
       </div>
     </div>

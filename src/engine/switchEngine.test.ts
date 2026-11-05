@@ -86,7 +86,7 @@ describe('經典無段調光', () => {
     expect(d.s.ramping).toBe(true);
     expect(d.s.level).toBeCloseTo(0.01, 3);
     d.wait(RAMP_MS / 2);
-    expect(d.s.level).toBeCloseTo(0.1, 2); // exponential midpoint
+    expect(d.s.level).toBeGreaterThan(0.25); // past the knee, in the fast part
     d.wait(RAMP_MS);
     expect(d.s.ramping).toBe(false);
     expect(d.s.level).toBe(1);
@@ -135,6 +135,33 @@ describe('經典無段調光', () => {
     const e = make('stepless');
     e.press(0); e.press(100); e.press(300);
     expect(e.state(300 + RAMP_MS + 50).flashing).toBe(false);
+  });
+});
+
+describe('無段調光 ramp curve (measured on the driver)', () => {
+  it('holds 1% for the first 0.8 s', () => {
+    expect(rampLevel(0)).toBe(0.01);
+    expect(rampLevel(500)).toBe(0.01);
+    expect(rampLevel(800)).toBe(0.01);
+  });
+  it('rises slowly (slope k) to 12% at 2.22 s', () => {
+    expect(rampLevel(1510)).toBeCloseTo(0.065, 3);
+    expect(rampLevel(2220)).toBeCloseTo(0.12, 6);
+  });
+  it('then three times as fast to 100% at 6 s', () => {
+    const k = (0.12 - 0.01) / 1.42; // per second
+    const k2 = (1 - 0.12) / 3.78;
+    expect(k2 / k).toBeCloseTo(3, 1);
+    expect(rampLevel(3000)).toBeCloseTo(0.12 + k2 * 0.78, 4);
+    expect(rampLevel(6000)).toBe(1);
+    expect(rampLevel(9000)).toBe(1);
+  });
+  it('never goes down', () => {
+    let prev = 0;
+    for (let t = 0; t <= 6000; t += 50) {
+      expect(rampLevel(t)).toBeGreaterThanOrEqual(prev);
+      prev = rampLevel(t);
+    }
   });
 });
 

@@ -2,7 +2,7 @@ import { COLOR_LABEL, FUNCTIONS, FUNCTION_ORDER, KELVIN, MIN_LEVEL, kelvinLabel,
 import type { LightState } from '../engine/switchEngine';
 import type { Setup } from '../scenes';
 import { FnAnim } from './FnAnim';
-import { WallSwitch } from './WallSwitch';
+import { WallSwitch, type FingerTap } from './WallSwitch';
 
 export interface GroupConfig {
   functionId: FunctionId;
@@ -32,7 +32,7 @@ export function eventText(state: LightState, cfg: GroupConfig): string {
     case 'slow-memory':
       return `🐢慢切 → 記憶功能：回到上次的 ${now}`;
     case 'off':
-      return '關燈了。馬上再按＝快切，等 2 秒再按＝慢切';
+      return '關燈了。馬上再按＝快切，關超過 3 秒再按＝慢切';
     default:
       return '按下開關試試看';
   }
@@ -46,8 +46,8 @@ export function kelvinSwatch(k: number): string {
   return '#ffcf8a';
 }
 
-/** Position on the stepless bar: perceptual (log) scale, 1% → 0, 100% → 1. */
-const barPos = (l: number) => Math.log(Math.max(l, MIN_LEVEL) / MIN_LEVEL) / Math.log(1 / MIN_LEVEL);
+/** Position on the stepless bar: linear, so the marker shows the real percentage (1% → 0, 100% → 1). */
+const barPos = (l: number) => (Math.max(l, MIN_LEVEL) - MIN_LEVEL) / (1 - MIN_LEVEL);
 
 /* ------------------------------------------------------------------ pieces */
 
@@ -215,31 +215,33 @@ interface Props {
   onQuick: () => void;
   onSlow: () => void;
   busy: boolean;
+  finger?: FingerTap | null;
   tutorial?: React.ReactNode;
 }
 
-export function QuickSlowButtons({ onQuick, onSlow, busy, className, short }: { onQuick: () => void; onSlow: () => void; busy: boolean; className?: string; short?: boolean }) {
+/** 🐢慢切 on the left, ⚡快切 on the right. */
+export function QuickSlowButtons({ onQuick, onSlow, busy, className }: { onQuick: () => void; onSlow: () => void; busy: boolean; className?: string }) {
   return (
     <>
-      <button type="button" className={`${className} quick`} onClick={onQuick} disabled={busy}>
-        <b>⚡ 快切</b>
-        <small>{short ? '換下一段' : '關了馬上開・換下一段'}</small>
-      </button>
       <button type="button" className={`${className} slow`} onClick={onSlow} disabled={busy}>
         <b>🐢 慢切</b>
-        <small>{short ? '回到預設' : '關 2 秒再開・回到預設'}</small>
+        <small>關超過3秒才開</small>
+      </button>
+      <button type="button" className={`${className} quick`} onClick={onQuick} disabled={busy}>
+        <b>⚡ 快切</b>
+        <small>關了馬上開</small>
       </button>
     </>
   );
 }
 
-export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, tutorial }: Props) {
+export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, finger, tutorial }: Props) {
   return (
     <section className="panel" aria-label={`${setup.fixture.name}控制`}>
       <div className="panel-block switch-block">
         {tutorial}
         <div className="switch-row">
-          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} label={setup.fixture.name} />
+          <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} label={setup.fixture.name} finger={finger} />
           <StatusView cfg={cfg} state={state} power={power} />
         </div>
         <div className="shortcuts">

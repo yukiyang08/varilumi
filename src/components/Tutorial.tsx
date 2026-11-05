@@ -6,7 +6,7 @@ interface Props {
 
 export const TUT_STEPS = [
   { title: '按「⚡快切」或連按兩下開關', text: '關了馬上再開＝快切，燈會換到下一段。' },
-  { title: '按「🐢慢切」或關燈等 2 秒再開', text: '這叫慢切，燈會回到預設的狀態。' },
+  { title: '按「🐢慢切」或關燈超過 3 秒再開', text: '這叫慢切，燈會回到預設的狀態。' },
 ];
 export const TUT_DONE = { title: '學會了！', text: '飛利明開關調光就是這麼簡單。換其他功能試試看吧。' };
 

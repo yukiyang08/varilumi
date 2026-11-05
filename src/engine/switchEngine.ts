@@ -1,4 +1,4 @@
-import { FLASH_MS, FUNCTIONS, MIN_LEVEL, QUICK_MS, RAMP_MS, type FunctionId } from './functions';
+import { FLASH_MS, FUNCTIONS, MIN_LEVEL, QUICK_MS, RAMP_HOLD_MS, RAMP_KNEE_LEVEL, RAMP_KNEE_MS, RAMP_MS, type FunctionId } from './functions';
 
 /**
  * Pure state machine for one Varilumi switch-dimming light group.
@@ -45,10 +45,14 @@ export interface LightState {
   offFor: number | null;
 }
 
-/** Perceptual ramp: 1% → 100% exponentially over RAMP_MS (looks linear to the eye). */
+/** 無段調光 brightness over time, as measured on the real driver (piecewise linear, see functions.ts). */
 export function rampLevel(elapsed: number): number {
-  const t = Math.min(Math.max(elapsed / RAMP_MS, 0), 1);
-  return MIN_LEVEL * Math.pow(1 / MIN_LEVEL, t);
+  if (elapsed <= RAMP_HOLD_MS) return MIN_LEVEL;
+  if (elapsed <= RAMP_KNEE_MS) {
+    return MIN_LEVEL + ((RAMP_KNEE_LEVEL - MIN_LEVEL) * (elapsed - RAMP_HOLD_MS)) / (RAMP_KNEE_MS - RAMP_HOLD_MS);
+  }
+  if (elapsed >= RAMP_MS) return 1;
+  return RAMP_KNEE_LEVEL + ((1 - RAMP_KNEE_LEVEL) * (elapsed - RAMP_KNEE_MS)) / (RAMP_MS - RAMP_KNEE_MS);
 }
 
 export class SwitchEngine {
