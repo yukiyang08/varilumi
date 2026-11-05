@@ -105,6 +105,6 @@ export const MIN_LEVEL = 0.01;
 export const RAMP_HOLD_MS = 800;
 export const RAMP_KNEE_MS = 2220;
 export const RAMP_KNEE_LEVEL = 0.12;
-/** How long the 🐢慢切 button keeps the switch off (the copy says 關超過3秒才開). */
+/** How long the 慢切 button keeps the switch off (the copy says 關超過3秒才開). */
 export const SLOW_GAP_MS = 3300;
 export const FLASH_MS = 260;

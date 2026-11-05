@@ -20,17 +20,17 @@ export function eventText(state: LightState, cfg: GroupConfig): string {
     case 'first':
       return `開燈！預設是 ${now}`;
     case 'step':
-      return `⚡快切 → 跳到下一段：${now}`;
+      return `快切 → 跳到下一段：${now}`;
     case 'ramp-start':
-      return '⚡快切 → 從夜燈開始慢慢變亮…亮度剛好時再連按兩下';
+      return '快切 → 從夜燈開始慢慢變亮…亮度剛好時再連按兩下';
     case 'ramp-stop':
-      return `⚡快切 → 停在 ${now}`;
+      return `快切 → 停在 ${now}`;
     case 'ramp-done':
       return cfg.memory ? '亮到 100% 了（快閃一下＝自動記憶在 100%）' : '亮到 100% 了';
     case 'slow-default':
-      return `🐢慢切 → 回到預設 ${now}`;
+      return `慢切 → 回到預設 ${now}`;
     case 'slow-memory':
-      return `🐢慢切 → 記憶功能：回到上次的 ${now}`;
+      return `慢切 → 記憶功能：回到上次的 ${now}`;
     case 'off':
       return '關燈了。馬上再按＝快切，關超過 3 秒再按＝慢切';
     default:
@@ -119,14 +119,6 @@ export function Options({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig
           </div>
         </div>
       )}
-      <label className="opt toggle">
-        <input id={`mem-${compact ? 'm' : 'd'}`} type="checkbox" checked={cfg.memory} onChange={(e) => onConfig({ memory: e.target.checked })} />
-        <span className="track-ui" aria-hidden="true" />
-        <span>
-          <b>記憶功能</b>
-          {!compact && <small>慢切開燈時，回到上次關燈前的{def.family === '調色型' ? '色溫' : '亮度'}</small>}
-        </span>
-      </label>
     </div>
   );
 }
@@ -187,14 +179,61 @@ export function HowTo({ cfg }: { cfg: GroupConfig }) {
   );
 }
 
+/* ------------------------------------------------------------------ 記憶功能 */
+
+/** What the lamp shows right now, in the same words as the step chips. */
+function nowLabel(cfg: GroupConfig, state: LightState): string {
+  const def = FUNCTIONS[cfg.functionId];
+  return def.mode === 'steps' ? def.steps[state.stepIndex].label : `${pct(state.level)}%`;
+}
+
+/**
+ * 記憶功能 as its own card, right under the function choice: a big toggle plus a live line saying
+ * what a 慢切 will bring back, so the difference between on and off is obvious before you try it.
+ */
+export function MemoryCard({ cfg, state, onConfig }: { cfg: GroupConfig; state: LightState; onConfig: (p: Partial<GroupConfig>) => void }) {
+  const def = FUNCTIONS[cfg.functionId];
+  const what = def.family === '調色型' ? '光色' : '亮度';
+  let line: React.ReactNode;
+  if (!cfg.memory) {
+    line = (
+      <>
+        慢切開燈一律回到預設 <b>{def.steps[0].label}</b>。打開看看差別！
+      </>
+    );
+  } else if (!state.switchOn) {
+    line = <>關燈中。慢切開燈會回到關燈前的{what}。</>;
+  } else if (state.ramping) {
+    line = <>漸亮中…停住之後，這個{what}會被記住。</>;
+  } else {
+    line = (
+      <>
+        關燈後慢切開燈，會回到 <b>{nowLabel(cfg, state)}</b>
+      </>
+    );
+  }
+  return (
+    <label className={`memory-card ${cfg.memory ? 'on' : ''}`}>
+      <input id="memory-toggle" type="checkbox" checked={cfg.memory} onChange={(e) => onConfig({ memory: e.target.checked })} />
+      <span className="mem-icon" aria-hidden="true">🧠</span>
+      <span className="mem-text">
+        <b>記憶功能 {cfg.memory ? '開' : '關'}</b>
+        <small>{line}</small>
+      </span>
+      <span className="track-ui" aria-hidden="true" />
+    </label>
+  );
+}
+
 /* ------------------------------------------------------------------ 更多設定 */
 
 export function MoreSettings({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; compact?: boolean }) {
   const def = FUNCTIONS[cfg.functionId];
+  if (!def.colorSelectable) return null;
   return (
     <details className="more">
       <summary>
-        更多設定<small>{def.colorSelectable ? '光色、' : ''}記憶功能</small>
+        換光色<small>白光・柔光・黃光</small>
       </summary>
       <div className="more-body">
         <Options cfg={cfg} onConfig={onConfig} compact={compact} />
@@ -219,16 +258,16 @@ interface Props {
   tutorial?: React.ReactNode;
 }
 
-/** 🐢慢切 on the left, ⚡快切 on the right. */
+/** 慢切 on the left, 快切 on the right. */
 export function QuickSlowButtons({ onQuick, onSlow, busy, className }: { onQuick: () => void; onSlow: () => void; busy: boolean; className?: string }) {
   return (
     <>
       <button type="button" className={`${className} slow`} onClick={onSlow} disabled={busy}>
-        <b>🐢 慢切</b>
+        <b>慢切</b>
         <small>關超過3秒才開</small>
       </button>
       <button type="button" className={`${className} quick`} onClick={onQuick} disabled={busy}>
-        <b>⚡ 快切</b>
+        <b>快切</b>
         <small>關了馬上開</small>
       </button>
     </>
@@ -251,6 +290,7 @@ export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQu
       <div className="panel-block">
         <h3 className="block-title">選一個功能</h3>
         <FunctionPicker cfg={cfg} onConfig={onConfig} />
+        <MemoryCard cfg={cfg} state={state} onConfig={onConfig} />
       </div>
       <MoreSettings cfg={cfg} onConfig={onConfig} />
       <HowTo cfg={cfg} />

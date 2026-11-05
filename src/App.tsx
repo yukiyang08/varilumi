@@ -11,6 +11,7 @@ import { MobileLayout } from './components/MobileLayout';
 import { Wizard, type WizardStep } from './components/Wizard';
 import { Breadcrumb } from './components/Breadcrumb';
 import type { FingerTap } from './components/WallSwitch';
+import { SceneToast, type Toast } from './components/SceneToast';
 import { QuickPicker } from './components/QuickPicker';
 import { switchFeedback } from './feedback';
 
@@ -81,6 +82,8 @@ export default function App() {
   const [presses, setPresses] = useState(0);
   const [busy, setBusy] = useState(false);
   const [finger, setFinger] = useState<FingerTap | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const toastTimer = useRef(0);
 
   // animation clock + LED soft-start smoothing + usage tracking
   const [now, setNow] = useState(() => performance.now());
@@ -143,10 +146,17 @@ export default function App() {
     switchFeedback(st.switchOn);
     advanceTutorial(st.event);
     setPresses((n) => n + 1);
+    if (st.event === 'slow-memory' || st.event === 'slow-default') {
+      const def = FUNCTIONS[e.options.functionId];
+      const label = def.mode === 'steps' ? def.steps[st.stepIndex].label : `${pct(st.level)}%`;
+      setToast({ key: t, memory: st.event === 'slow-memory', label });
+      clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setToast(null), 3200);
+    }
   }, [advanceTutorial]);
 
   /**
-   * ⚡快切 / 🐢慢切 buttons: a hand flips the switch off, then on again after `gap` ms, exactly as a person
+   * 快切 / 慢切 buttons: a hand flips the switch off, then on again after `gap` ms, exactly as a person
    * would. Each tap starts the finger animation and flips the switch when the fingertip touches the rocker.
    */
   const runSequence = useCallback(
@@ -183,10 +193,9 @@ export default function App() {
     const e = engine.current;
     const t = performance.now();
     const fnChanged = patch.functionId !== undefined && patch.functionId !== e.options.functionId;
-    const memChanged = patch.memory !== undefined && patch.memory !== e.options.memory;
     e.configure(patch, t);
     // a new function is like a freshly installed lamp: switch it on so the visitor sees it straight away
-    if (fnChanged || memChanged) e.press(t);
+    if (fnChanged) e.press(t);
     setCfg((c) => ({ ...c, ...patch }));
   }, []);
 
@@ -292,7 +301,7 @@ export default function App() {
 
   const crumbs = (
     <div className="crumbs-wrap">
-      <Breadcrumb setup={setup} functionId={cfg.functionId} onEdit={editStep} />
+      <Breadcrumb setup={setup} onEdit={editStep} />
       {sheet && (
         <QuickPicker
           kind={sheet}
@@ -368,6 +377,7 @@ export default function App() {
           onSlow={onSlow}
           busy={busy}
           finger={finger}
+          toast={toast}
           crumbs={crumbs}
           tut={tut}
           after={
@@ -387,7 +397,10 @@ export default function App() {
       {crumbs}
       <main className="layout">
         <div className="stage">
-          <SceneView setup={setup} weights={weights} />
+          <div className="picture">
+            <SceneView setup={setup} weights={weights} />
+            <SceneToast toast={toast} />
+          </div>
           <p className="disclaimer">3D 模擬畫面：{setup.detail}。實際光色與亮度依空間而異。</p>
         </div>
         <div className="side">

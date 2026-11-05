@@ -77,12 +77,21 @@ export class SwitchEngine {
     return { ...this.opts };
   }
 
-  /** Change function / memory: behaves like installing a new lamp (resets state, light stays off). */
+  /**
+   * Change function: behaves like installing a new lamp (resets state, light stays off).
+   * Turning 記憶功能 on or off keeps the light as it is; switching it on remembers the current state,
+   * so the very next 慢切 shows the difference.
+   */
   configure(patch: Partial<EngineOptions>, now: number): void {
     const fnChanged = patch.functionId !== undefined && patch.functionId !== this.opts.functionId;
-    const memChanged = patch.memory !== undefined && patch.memory !== this.opts.memory;
+    const memOn = patch.memory === true && !this.opts.memory;
     this.opts = { ...this.opts, ...patch };
-    if (fnChanged || memChanged) {
+    if (memOn && !fnChanged) {
+      this.settle(now);
+      this.memStep = this.stepIndex;
+      if (this.rampStart === null) this.memLevel = this.held;
+    }
+    if (fnChanged) {
       this.switchOn = false;
       this.offAt = now - 10 * QUICK_MS; // long enough ago that the next press is a slow one
       this.everOn = false;

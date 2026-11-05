@@ -14,7 +14,7 @@ interface Props {
   label: string;
   /** compact = mobile dock size, hint shown elsewhere */
   compact?: boolean;
-  /** shown while the ⚡快切 / 🐢慢切 buttons operate the switch */
+  /** shown while the 快切 / 慢切 buttons operate the switch */
   finger?: FingerTap | null;
 }
 
@@ -31,7 +31,7 @@ export function SwitchHint({ on, offFor }: { on: boolean; offFor: number | null 
       </>
     );
   if (offFor === null) return <>按一下<b>開燈</b></>;
-  if (inQuick) return <>馬上再按 = <b className="quick">⚡快切</b>（還有 {secs} 秒）</>;
+  if (inQuick) return <>馬上再按 = <b className="quick">快切</b>（還有 {secs} 秒）</>;
   return <>現在按 = <b className="slow">慢切</b>，回到預設</>;
 }
 

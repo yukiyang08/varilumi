@@ -1,8 +1,9 @@
 import { FUNCTIONS, kelvinLabel } from '../engine/functions';
 import type { LightState } from '../engine/switchEngine';
 import type { Setup } from '../scenes';
-import { FunctionPicker, HowTo, MoreSettings, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
+import { FunctionPicker, HowTo, MemoryCard, MoreSettings, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
 import { SceneView } from './SceneView';
+import { SceneToast, type Toast } from './SceneToast';
 import { TUT_DONE, TUT_STEPS } from './Tutorial';
 import { SwitchHint, WallSwitch, type FingerTap } from './WallSwitch';
 
@@ -18,6 +19,7 @@ interface Props {
   onSlow: () => void;
   busy: boolean;
   finger: FingerTap | null;
+  toast: Toast | null;
   crumbs: React.ReactNode;
   tut: { step: number; onSkip: () => void; onClose: () => void } | null;
   after: React.ReactNode;
@@ -41,6 +43,7 @@ export function MobileLayout(p: Props) {
       <div className="m-stage">
         <div className="m-picture">
           <SceneView setup={setup} weights={p.weights} />
+          <SceneToast toast={p.toast} />
           <div className={`m-readout ${lit ? 'lit' : ''}`} aria-live="polite">
             <span className="m-big">{state.switchOn ? (state.flashing ? '✦' : `${pct(state.level)}%`) : '關燈'}</span>
             {state.switchOn && (
@@ -57,6 +60,7 @@ export function MobileLayout(p: Props) {
 
       <div className="m-body">
         <FunctionPicker cfg={p.cfg} onConfig={p.onConfig} compact />
+        <MemoryCard cfg={p.cfg} state={state} onConfig={p.onConfig} />
         <div className="m-status">
           <StatusView cfg={p.cfg} state={state} hideReadout />
         </div>

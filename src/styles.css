@@ -554,8 +554,78 @@ a { color: var(--brand-ink); }
 }
 @media (prefers-reduced-motion: reduce) { .tw-finger { display: none; } .tw-well, .tw-rocker { transition: none; } }
 
-/* 🐢慢切 on the left, ⚡快切 on the right */
+/* 慢切 on the left, 快切 on the right */
 .m-dock-row .m-side.slow { order: 0; }
 .m-dock-row .switch-wrap { order: 1; }
 .m-dock-row .m-side.quick { order: 2; }
 .m-side small { white-space: nowrap; }
+
+/* ================================================================ v4: memory made obvious */
+.memory-card {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  margin-top: 10px; padding: 12px 14px; border-radius: 14px; cursor: pointer;
+  background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); transition: background 0.15s, box-shadow 0.15s;
+}
+.memory-card.on { background: #fff8e1; box-shadow: inset 0 0 0 2px var(--brand-1); }
+.memory-card input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.memory-card .mem-icon { font-size: 22px; line-height: 1; filter: grayscale(1) opacity(0.55); transition: filter 0.15s; }
+.memory-card.on .mem-icon { filter: none; }
+.memory-card .mem-text b { display: block; font-size: 15.5px; }
+.memory-card .mem-text small { display: block; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.memory-card .mem-text small b { display: inline; font-size: 13px; color: var(--brand-ink); }
+.memory-card .track-ui { flex: none; width: 48px; height: 28px; border-radius: 999px; background: #d8d0c4; position: relative; transition: 0.2s; }
+.memory-card .track-ui::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); transition: 0.2s; }
+.memory-card.on .track-ui { background: var(--brand-2); }
+.memory-card.on .track-ui::after { transform: translateX(20px); }
+.memory-card input:focus-visible ~ .track-ui { outline: 3px solid var(--brand-1); outline-offset: 2px; }
+
+/* the result of a 慢切, shown on the picture */
+.picture { position: relative; }
+.scene-toast {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 4; width: max-content; max-width: calc(100% - 24px);
+  display: grid; gap: 2px; text-align: center; padding: 9px 14px; border-radius: 14px; color: #fff;
+  background: rgba(20, 16, 12, 0.66); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); animation: toastin 3.2s ease-out forwards; pointer-events: none;
+}
+.scene-toast.mem { background: rgba(160, 98, 15, 0.82); }
+.scene-toast b { font-size: 15px; }
+.scene-toast small { font-size: 12.5px; opacity: 0.85; }
+@keyframes toastin { 0% { opacity: 0; transform: translate(-50%, -6px); } 8%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .scene-toast { animation: none; } }
+
+/* ================================================================ v4: phone layout — more room for the controls */
+.m-stage .scene { max-height: 34vh; }
+.m-body { gap: 10px; padding-top: 10px; padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+.m-body .memory-card { margin-top: 0; }
+.m-status { padding: 10px 12px; }
+.m-dock { padding-top: 6px; }
+.m-tut { margin-bottom: 6px; padding: 5px 6px 5px 10px; font-size: 13px; }
+.m-hint { margin-bottom: 4px; }
+.m-dock-row { gap: 8px; }
+.m-side { padding: 10px 4px; border-radius: 14px; }
+.m-side b { font-size: 15px; }
+.m-side small { font-size: 11px; }
+.m-top .help { white-space: nowrap; flex: none; }
+.m-top .brand { min-width: 0; }
+.m-top .brand span { min-width: 0; }
+.m-top .brand small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* short screens (iPhone SE and similar): a smaller picture */
+@media (max-height: 640px) {
+  .m-stage .scene { max-height: 30vh; }
+  .m-top { padding-block: 6px; }
+  .m-top .brand img { width: 28px; height: 28px; }
+}
+/* narrow screens: smaller switch and buttons so nothing overlaps; drop the small crumb labels */
+@media (max-width: 380px) {
+  .switch-wrap.compact .tw-frame { --w: 118px; --h: 64px; }
+  .switch-wrap.compact .tw-finger { width: 24px; height: 40px; left: calc(var(--w) * 0.5 - 9px); }
+  .m-dock-row { gap: 6px; }
+  .m-side b { font-size: 14px; }
+  .m-side small { font-size: 10px; }
+  .m-crumbs .crumb small { display: none; }
+  .m-crumbs .crumb { padding: 7px 6px; }
+  .m-top .brand small { display: none; }
+  .memory-card { padding: 10px 12px; gap: 8px; }
+  .memory-card .mem-text small { font-size: 12.5px; }
+}

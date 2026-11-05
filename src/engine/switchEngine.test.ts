@@ -193,6 +193,39 @@ describe('configure', () => {
     expect(e.state(400).kelvin).toBe(6000);
   });
 
+  it('turning memory on keeps the light and remembers the current step', () => {
+    const e = make('four-step');
+    e.press(0); e.press(100); e.press(200); e.press(300); e.press(400); // 25%
+    e.configure({ memory: true }, 500);
+    expect(e.state(500).switchOn).toBe(true);
+    expect(e.state(500).level).toBe(0.25);
+    e.press(600); // off
+    e.press(5000); // slow on
+    expect(e.state(5000).level).toBe(0.25);
+    expect(e.state(5000).event).toBe('slow-memory');
+  });
+
+  it('turning memory off keeps the light; the next slow toggle goes back to the default', () => {
+    const e = make('four-step', true);
+    e.press(0); e.press(100); e.press(200); // 50%
+    e.configure({ memory: false }, 300);
+    expect(e.state(300).level).toBe(0.5);
+    e.press(400);
+    e.press(5000);
+    expect(e.state(5000).level).toBe(1);
+  });
+
+  it('turning memory on after a stepless stop remembers that level', () => {
+    const e = make('stepless');
+    e.press(0); e.press(100); e.press(200); // ramp starts at 200
+    e.press(3200); e.press(3300); // stop at the level reached by 3200
+    const kept = e.state(3300).level;
+    e.configure({ memory: true }, 3400);
+    e.press(3500);
+    e.press(8000);
+    expect(e.state(8000).level).toBeCloseTo(kept, 6);
+  });
+
   it('changing colour does not reset the step', () => {
     const e = make('four-step');
     e.press(0); e.press(100); e.press(200);
