@@ -126,6 +126,7 @@ describe('經典無段調光', () => {
     e.press(0); e.press(100); e.press(300); // ramp starts at 300
     const done = 300 + RAMP_MS;
     expect(e.state(done + 50).flashing).toBe(true);
+    expect(e.state(done + 50).event).toBe('ramp-done');
     expect(e.state(done + 50).level).toBe(0);
     expect(e.state(done + 1000).flashing).toBe(false);
     expect(e.state(done + 1000).level).toBe(1);

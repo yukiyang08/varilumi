@@ -24,7 +24,7 @@ export function Tutorial({ step, onSkip, onClose }: Props) {
         </div>
       )}
       <div>
-        <b>{done ? '🎉 ' : `${step + 1}. `}{s.title}</b>
+        <b>{done ? '' : `${step + 1}. `}{s.title}</b>
         <p>{s.text}</p>
       </div>
       <button type="button" className="link" onClick={done ? onClose : onSkip}>

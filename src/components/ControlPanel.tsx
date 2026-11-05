@@ -26,11 +26,11 @@ export function eventText(state: LightState, cfg: GroupConfig): string {
     case 'ramp-stop':
       return `快切 → 停在 ${now}`;
     case 'ramp-done':
-      return cfg.memory ? '亮到 100% 了（快閃一下＝自動記憶在 100%）' : '亮到 100% 了';
+      return cfg.memory ? '亮到 100%：快閃一下＝已自動記憶在 100%' : '亮到 100% 了';
     case 'slow-default':
-      return `慢切 → 回到預設 ${now}`;
+      return `慢切 → 沒記憶，回到預設 ${now}`;
     case 'slow-memory':
-      return `慢切 → 記憶功能：回到上次的 ${now}`;
+      return `慢切 → 有記憶，回到關燈前的 ${now}，不必重調`;
     case 'off':
       return '關燈了。馬上再按＝快切，關超過 3 秒再按＝慢切';
     default:
@@ -130,7 +130,7 @@ export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfi
     <div className="status">
       {!hideReadout && (
         <div className={`readout ${lit ? '' : 'dim'}`}>
-          <span className="big">{state.switchOn ? (state.flashing ? '✦' : `${pct(state.level)}%`) : '關'}</span>
+          <span className="big">{state.switchOn ? (state.flashing ? '快閃' : `${pct(state.level)}%`) : '關'}</span>
           <span className="k">
             <i style={{ background: kelvinSwatch(state.kelvin) }} />
             {state.kelvin}K {kelvinLabel(state.kelvin)}
@@ -173,7 +173,7 @@ export function HowTo({ cfg }: { cfg: GroupConfig }) {
         {def.howTo.map((h) => (
           <li key={h}>{h}</li>
         ))}
-        {cfg.memory && <li>記憶功能：慢切開燈會回到上次關燈前的狀態</li>}
+        {cfg.memory && <li>加記憶功能：慢切開燈維持上次關燈前的亮度，不必重調</li>}
       </ul>
     </div>
   );
@@ -188,40 +188,47 @@ function nowLabel(cfg: GroupConfig, state: LightState): string {
 }
 
 /**
- * 記憶功能 as its own card, right under the function choice: a big toggle plus a live line saying
- * what a 慢切 will bring back, so the difference between on and off is obvious before you try it.
+ * 記憶功能, worded like Varilumi's guide and order page: a 沒記憶 / 加記憶功能 choice, what each one does,
+ * who it suits, and a live line saying what the next 慢切 will bring back.
  */
 export function MemoryCard({ cfg, state, onConfig }: { cfg: GroupConfig; state: LightState; onConfig: (p: Partial<GroupConfig>) => void }) {
   const def = FUNCTIONS[cfg.functionId];
-  const what = def.family === '調色型' ? '光色' : '亮度';
-  let line: React.ReactNode;
-  if (!cfg.memory) {
-    line = (
-      <>
-        慢切開燈一律回到預設 <b>{def.steps[0].label}</b>。打開看看差別！
-      </>
-    );
-  } else if (!state.switchOn) {
-    line = <>關燈中。慢切開燈會回到關燈前的{what}。</>;
-  } else if (state.ramping) {
-    line = <>漸亮中…停住之後，這個{what}會被記住。</>;
-  } else {
-    line = (
-      <>
-        關燈後慢切開燈，會回到 <b>{nowLabel(cfg, state)}</b>
-      </>
-    );
+  const what = def.family === '調色型' ? '光色和亮度' : '亮度';
+  let live: React.ReactNode = null;
+  if (cfg.memory) {
+    if (!state.switchOn) live = <>關燈中：慢切開燈會回到關燈前的{what}</>;
+    else if (state.ramping) live = <>漸亮中：停住的{what}會被記住</>;
+    else live = <>現在關燈，下次慢切開燈會是 <b>{nowLabel(cfg, state)}</b></>;
   }
   return (
-    <label className={`memory-card ${cfg.memory ? 'on' : ''}`}>
-      <input id="memory-toggle" type="checkbox" checked={cfg.memory} onChange={(e) => onConfig({ memory: e.target.checked })} />
-      <span className="mem-icon" aria-hidden="true">🧠</span>
-      <span className="mem-text">
-        <b>記憶功能 {cfg.memory ? '開' : '關'}</b>
-        <small>{line}</small>
-      </span>
-      <span className="track-ui" aria-hidden="true" />
-    </label>
+    <div className={`memory-card ${cfg.memory ? 'on' : ''}`}>
+      <div className="mem-head">
+        <span className="mem-title">記憶功能</span>
+        <div className="mem-seg" role="radiogroup" aria-label="記憶功能">
+          <button type="button" role="radio" aria-checked={!cfg.memory} className={!cfg.memory ? 'active' : ''} onClick={() => onConfig({ memory: false })}>
+            沒記憶
+          </button>
+          <button type="button" role="radio" aria-checked={cfg.memory} className={cfg.memory ? 'active' : ''} onClick={() => onConfig({ memory: true })}>
+            加記憶功能
+          </button>
+        </div>
+      </div>
+      {cfg.memory ? (
+        <p className="mem-desc">
+          每次慢切開燈（關燈超過 3 秒），都維持上次關燈前的{what}，不必重調。
+        </p>
+      ) : (
+        <p className="mem-desc">
+          每次慢切開燈都是預設的 <b>{def.steps[0].label}</b>。想要其他{what}，再用快切重調。
+        </p>
+      )}
+      {live && <p className="mem-live">{live}</p>}
+      {cfg.memory && def.mode === 'stepless' && <p className="mem-note">漸亮時 6 秒內沒有快切，燈會快閃一下，代表自動記憶在 100%。</p>}
+      <p className="mem-fit">
+        適合：{cfg.memory ? '調好亮度後一直用同一個亮度，偶爾才改' : '平常都全亮，偶爾才調暗一下'}
+      </p>
+      {cfg.memory && <p className="mem-note">想要記住後不被快切調走（上鎖），可洽飛利明 LINE 客服。</p>}
+    </div>
   );
 }
 

@@ -84,6 +84,7 @@ export default function App() {
   const [finger, setFinger] = useState<FingerTap | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef(0);
+  const wasFlashing = useRef(false);
 
   // animation clock + LED soft-start smoothing + usage tracking
   const [now, setNow] = useState(() => performance.now());
@@ -98,6 +99,13 @@ export default function App() {
       lastT.current = t;
       const e = engine.current;
       const s = e.state(t);
+      // 無段調光 with memory: when the ramp reaches 100% unstopped the lamp flashes = memorised at 100%
+      if (s.flashing && !wasFlashing.current && e.options.memory) {
+        setToast({ key: t, kind: 'flash', memory: true, label: '100%' });
+        clearTimeout(toastTimer.current);
+        toastTimer.current = window.setTimeout(() => setToast(null), 3200);
+      }
+      wasFlashing.current = s.flashing;
       const target = { level: s.level, mired: 1e6 / s.kelvin };
       const cur = (shown.current ??= { ...target });
       const tau = target.level > cur.level ? RISE_S : FALL_S;
@@ -149,7 +157,7 @@ export default function App() {
     if (st.event === 'slow-memory' || st.event === 'slow-default') {
       const def = FUNCTIONS[e.options.functionId];
       const label = def.mode === 'steps' ? def.steps[st.stepIndex].label : `${pct(st.level)}%`;
-      setToast({ key: t, memory: st.event === 'slow-memory', label });
+      setToast({ key: t, kind: 'slow', memory: st.event === 'slow-memory', label });
       clearTimeout(toastTimer.current);
       toastTimer.current = window.setTimeout(() => setToast(null), 3200);
     }

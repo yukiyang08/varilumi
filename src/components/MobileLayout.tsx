@@ -45,7 +45,7 @@ export function MobileLayout(p: Props) {
           <SceneView setup={setup} weights={p.weights} />
           <SceneToast toast={p.toast} />
           <div className={`m-readout ${lit ? 'lit' : ''}`} aria-live="polite">
-            <span className="m-big">{state.switchOn ? (state.flashing ? '✦' : `${pct(state.level)}%`) : '關燈'}</span>
+            <span className="m-big">{state.switchOn ? (state.flashing ? '快閃' : `${pct(state.level)}%`) : '關燈'}</span>
             {state.switchOn && (
               <span className="m-k">
                 <i style={{ background: kelvinSwatch(state.kelvin) }} />
@@ -81,7 +81,7 @@ export function MobileLayout(p: Props) {
             )}
             <span className="m-tut-text">
               <b>
-                {tutDone ? '🎉 ' : `${p.tut.step + 1}. `}
+                {tutDone ? '' : `${p.tut.step + 1}. `}
                 {tutLine.title}
               </b>
             </span>

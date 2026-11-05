@@ -56,7 +56,7 @@ export const ProductCards = memo(function ProductCards({ data, fixture, fixtureN
           看全部 →
         </a>
       </div>
-      <p className="products-note">下單時在「{fn.family === '調光型' ? '調光功能' : '功能'}」選「{fn.name}」即可。多為訂製品，請先確認尺寸。</p>
+      <p className="products-note">下單時在「{fn.family === '調光型' ? '調光功能' : '功能'}」選「{fn.name}」，需要的話再勾選「加記憶功能」。多為訂製品，請先確認尺寸。</p>
       <div className="product-row">
         {list.map((p) => (
           <a key={p.id} className="product" href={p.link} target="_blank" rel="noopener">
