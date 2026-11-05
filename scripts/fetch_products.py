@@ -43,7 +43,8 @@ def main():
             dim_opts = {t["name"] for a in p["attributes"] if a["name"] == "調光功能" for t in a["terms"]}
             funcs = [f for f, label in (("four-step", "經典四段調光"), ("stepless", "經典無段調光")) if label in dim_opts or not dim_opts]
         elif "調色型" in name:
-            funcs = ["tri-color-night"]
+            # 調色型 products offer these functions in the order form (調色功能選擇)
+            funcs = ["tri-color-night", "two-color-stepless", "three-color-stepless"]
         else:
             continue
         if not funcs:

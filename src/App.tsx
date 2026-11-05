@@ -4,7 +4,7 @@ import { SwitchEngine } from './engine/switchEngine';
 import { colorWeights } from './render/compositor';
 import { getSetup, powerText, type FixtureId, type RoomId } from './scenes';
 import { SceneView } from './components/SceneView';
-import { ControlPanel, pct, type GroupConfig } from './components/ControlPanel';
+import { ControlPanel, pct, stateLabel, type GroupConfig } from './components/ControlPanel';
 import { ProductCards, type ProductData } from './components/ProductCards';
 import { TUT_STEPS, Tutorial } from './components/Tutorial';
 import { MobileLayout } from './components/MobileLayout';
@@ -155,8 +155,7 @@ export default function App() {
     advanceTutorial(st.event);
     setPresses((n) => n + 1);
     if (st.event === 'slow-memory' || st.event === 'slow-default') {
-      const def = FUNCTIONS[e.options.functionId];
-      const label = def.mode === 'steps' ? def.steps[st.stepIndex].label : `${pct(st.level)}%`;
+      const label = stateLabel(e.options.functionId, st);
       setToast({ key: t, kind: 'slow', memory: st.event === 'slow-memory', label });
       clearTimeout(toastTimer.current);
       toastTimer.current = window.setTimeout(() => setToast(null), 3200);

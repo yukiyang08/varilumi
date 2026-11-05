@@ -1,4 +1,5 @@
-import { COLOR_LABEL, FUNCTIONS, FUNCTION_ORDER, KELVIN, MIN_LEVEL, kelvinLabel, type ColorChoice, type FunctionId } from '../engine/functions';
+import { useEffect, useRef } from 'react';
+import { COLOR_LABEL, COLOR_PAIRS, FUNCTIONS, FUNCTION_ORDER, KELVIN, MIN_LEVEL, kelvinLabel, type ColorChoice, type FunctionId } from '../engine/functions';
 import type { LightState } from '../engine/switchEngine';
 import type { Setup } from '../scenes';
 import { FnAnim } from './FnAnim';
@@ -8,23 +9,35 @@ export interface GroupConfig {
   functionId: FunctionId;
   kelvin: number;
   memory: boolean;
+  /** 兩色無段調光: the chosen pair of colours */
+  colors?: number[];
 }
 
 export const pct = (l: number) => (l >= 0.995 ? '100' : l < 0.0105 ? '1' : (l * 100).toFixed(l < 0.1 ? 1 : 0));
 
+/** What the lamp shows, in the same words as the step chips: "25%", "黃光夜燈", "柔光 35%". */
+export function stateLabel(functionId: FunctionId, state: { stepIndex: number; level: number; kelvin: number }): string {
+  const def = FUNCTIONS[functionId];
+  if (def.mode === 'steps') return def.steps[state.stepIndex].label;
+  if (def.mode === 'multi-stepless') return `${kelvinLabel(state.kelvin)} ${pct(state.level)}%`;
+  return `${pct(state.level)}%`;
+}
+
 export function eventText(state: LightState, cfg: GroupConfig): string {
   const def = FUNCTIONS[cfg.functionId];
-  const step = def.mode === 'steps' ? def.steps[state.stepIndex] : null;
-  const now = step ? step.label : `${pct(state.level)}%`;
+  const now = stateLabel(cfg.functionId, state);
+  const multi = def.mode === 'multi-stepless';
   switch (state.event) {
     case 'first':
       return `開燈！預設是 ${now}`;
     case 'step':
       return `快切 → 跳到下一段：${now}`;
     case 'ramp-start':
-      return '快切 → 從夜燈開始慢慢變亮…亮度剛好時再連按兩下';
+      return multi
+        ? `快切 → ${kelvinLabel(state.kelvin)}從夜燈開始慢慢變亮…亮度剛好時再快切停住`
+        : '快切 → 從夜燈開始慢慢變亮…亮度剛好時再連按兩下';
     case 'ramp-stop':
-      return `快切 → 停在 ${now}`;
+      return multi ? `快切 → 停在 ${now}，已記住` : `快切 → 停在 ${now}`;
     case 'ramp-done':
       return cfg.memory ? '亮到 100%：快閃一下＝已自動記憶在 100%' : '亮到 100% 了';
     case 'slow-default':
@@ -53,10 +66,21 @@ const barPos = (l: number) => (Math.max(l, MIN_LEVEL) - MIN_LEVEL) / (1 - MIN_LE
 
 export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; compact?: boolean }) {
   const def = FUNCTIONS[cfg.functionId];
+  const row = useRef<HTMLDivElement>(null);
+  // keep the chosen chip fully in view in the swipeable row (scrolls the row only, never the page)
+  useEffect(() => {
+    const el = row.current?.querySelector<HTMLElement>('.fn-chip.active');
+    const box = row.current;
+    if (!el || !box) return;
+    const left = el.offsetLeft - box.offsetLeft;
+    if (left < box.scrollLeft + 8 || left + el.offsetWidth > box.scrollLeft + box.clientWidth - 8) {
+      box.scrollTo({ left: Math.max(0, left - (box.clientWidth - el.offsetWidth) / 2), behavior: 'smooth' });
+    }
+  }, [cfg.functionId]);
   if (compact) {
     return (
       <div className="fn-compact">
-        <div className="fn-chips" role="radiogroup" aria-label="開關調光功能">
+        <div className="fn-chips" role="radiogroup" aria-label="開關調光功能" ref={row}>
           {FUNCTION_ORDER.map((id) => {
             const f = FUNCTIONS[id];
             const active = id === cfg.functionId;
@@ -148,6 +172,21 @@ export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfi
           ))}
         </ol>
       ) : (
+        <>
+        {def.mode === 'multi-stepless' && (
+          <ol className="steps colors" aria-label="光色">
+            {Array.from({ length: state.colorCount }, (_, i) => i).map((i) => {
+              const k = (cfg.colors && def.id === 'two-color-stepless' ? cfg.colors : def.colors!)[i];
+              return (
+                <li key={i} className={state.switchOn && i === state.colorIndex ? 'cur' : ''}>
+                  <span className="dot" style={{ background: kelvinSwatch(k) }} />
+                  {kelvinLabel(k)}
+                  {state.switchOn && !state.ramping && i === state.nextColorIndex && i !== state.colorIndex && <em className="next">下次快切</em>}
+                </li>
+              );
+            })}
+          </ol>
+        )}
         <div className="ramp" aria-label="無段亮度">
           <div className="ramp-bar" style={{ background: `linear-gradient(90deg, #2a2723, ${kelvinSwatch(state.kelvin)})` }}>
             <span className="ramp-marker" style={{ left: `${(state.switchOn ? barPos(state.level) : 0) * 100}%` }} />
@@ -158,6 +197,7 @@ export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfi
             <span>100%</span>
           </div>
         </div>
+        </>
       )}
       <p className="event" aria-live="polite">{eventText(state, cfg)}</p>
     </div>
@@ -181,11 +221,6 @@ export function HowTo({ cfg }: { cfg: GroupConfig }) {
 
 /* ------------------------------------------------------------------ 記憶功能 */
 
-/** What the lamp shows right now, in the same words as the step chips. */
-function nowLabel(cfg: GroupConfig, state: LightState): string {
-  const def = FUNCTIONS[cfg.functionId];
-  return def.mode === 'steps' ? def.steps[state.stepIndex].label : `${pct(state.level)}%`;
-}
 
 /**
  * 記憶功能, worded like Varilumi's guide and order page: a 沒記憶 / 加記憶功能 choice, what each one does,
@@ -194,11 +229,33 @@ function nowLabel(cfg: GroupConfig, state: LightState): string {
 export function MemoryCard({ cfg, state, onConfig }: { cfg: GroupConfig; state: LightState; onConfig: (p: Partial<GroupConfig>) => void }) {
   const def = FUNCTIONS[cfg.functionId];
   const what = def.family === '調色型' ? '光色和亮度' : '亮度';
+  if (def.memoryBuiltIn) {
+    const live = !state.switchOn ? (
+      <>關燈中：慢切開燈會回到關燈前的{what}</>
+    ) : state.ramping ? (
+      <>漸亮中：快切停住的{what}會被記住</>
+    ) : (
+      <>
+        現在關燈，下次慢切開燈會是 <b>{stateLabel(cfg.functionId, state)}</b>
+      </>
+    );
+    return (
+      <div className="memory-card on">
+        <div className="mem-head">
+          <span className="mem-title">記憶功能</span>
+          <span className="mem-builtin">此功能內建記憶</span>
+        </div>
+        <p className="mem-desc">每次慢切開燈，都是上次關燈前的{what}。快切停住的那一刻就會記住。</p>
+        <p className="mem-live">{live}</p>
+        <p className="mem-note">漸亮時 6 秒內沒有快切，燈會快閃一下，代表這個光色自動記憶在 100%。</p>
+      </div>
+    );
+  }
   let live: React.ReactNode = null;
   if (cfg.memory) {
     if (!state.switchOn) live = <>關燈中：慢切開燈會回到關燈前的{what}</>;
     else if (state.ramping) live = <>漸亮中：停住的{what}會被記住</>;
-    else live = <>現在關燈，下次慢切開燈會是 <b>{nowLabel(cfg, state)}</b></>;
+    else live = <>現在關燈，下次慢切開燈會是 <b>{stateLabel(cfg.functionId, state)}</b></>;
   }
   return (
     <div className={`memory-card ${cfg.memory ? 'on' : ''}`}>
@@ -236,6 +293,32 @@ export function MemoryCard({ cfg, state, onConfig }: { cfg: GroupConfig; state: 
 
 export function MoreSettings({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; compact?: boolean }) {
   const def = FUNCTIONS[cfg.functionId];
+  if (def.id === 'two-color-stepless') {
+    const cur = (cfg.colors ?? def.colors!).join(',');
+    return (
+      <details className="more">
+        <summary>
+          換光色組合<small>兩色溫自由選擇</small>
+        </summary>
+        <div className="more-body">
+          <div className="chips" role="radiogroup" aria-label="兩色組合">
+            {COLOR_PAIRS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                role="radio"
+                aria-checked={p.colors.join(',') === cur}
+                className={`chip ${p.colors.join(',') === cur ? 'active' : ''}`}
+                onClick={() => onConfig({ colors: p.colors })}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </details>
+    );
+  }
   if (!def.colorSelectable) return null;
   return (
     <details className="more">

@@ -166,6 +166,82 @@ describe('無段調光 ramp curve (measured on the driver)', () => {
   });
 });
 
+describe('兩色無段調光 (內建記憶)', () => {
+  it('first 快切 ramps the first colour, a second 快切 stops it; the next 快切 ramps the second colour', () => {
+    const e = make('two-color-stepless');
+    e.press(0); // first on: white 100%
+    expect(e.state(0).kelvin).toBe(6000);
+    expect(e.state(0).level).toBe(1);
+    e.press(100); e.press(300); // quick → white ramps from the night light
+    expect(e.state(300).ramping).toBe(true);
+    expect(e.state(300).kelvin).toBe(6000);
+    expect(e.state(300).level).toBe(0.01);
+    e.press(3300); e.press(3400); // quick during the ramp → stop
+    const white = rampLevel(3000);
+    expect(e.state(3400).ramping).toBe(false);
+    expect(e.state(3400).level).toBeCloseTo(white, 6);
+    expect(e.state(3400).nextColorIndex).toBe(1);
+    e.press(3500); e.press(3600); // quick → second colour (yellow) ramps
+    expect(e.state(3600).kelvin).toBe(3000);
+    expect(e.state(3600).ramping).toBe(true);
+    e.press(5600); e.press(5700); // stop yellow
+    expect(e.state(5700).kelvin).toBe(3000);
+    expect(e.state(5700).level).toBeCloseTo(rampLevel(2000), 6);
+  });
+
+  it('always remembers: 慢切 comes back to the last colour and brightness', () => {
+    const e = make('two-color-stepless'); // memory option off, but built in
+    e.press(0);
+    e.press(100); e.press(300); // ramp white
+    e.press(1300); e.press(1400); // quick → stop white
+    e.press(1500); e.press(1600); // quick → ramp yellow
+    e.press(4600); e.press(4700); // stop yellow
+    const kept = e.state(4700).level;
+    e.press(5000); // off
+    expect(e.press(9000)).toBe('slow');
+    const s = e.state(9000);
+    expect(s.event).toBe('slow-memory');
+    expect(s.kelvin).toBe(3000);
+    expect(s.level).toBeCloseTo(kept, 6);
+    // after a 慢切 the first 快切 re-tunes the colour that is on (yellow)
+    e.press(9100); e.press(9200);
+    expect(e.state(9200).kelvin).toBe(3000);
+    expect(e.state(9200).ramping).toBe(true);
+  });
+
+  it('an unstopped ramp flashes, memorises 100% and moves on to the next colour', () => {
+    const e = make('two-color-stepless');
+    e.press(0); e.press(100); e.press(300); // ramp white from 300
+    const done = 300 + RAMP_MS;
+    expect(e.state(done + 50).flashing).toBe(true);
+    expect(e.state(done + 1000).level).toBe(1);
+    expect(e.state(done + 1000).nextColorIndex).toBe(1);
+  });
+
+  it('uses the chosen colour pair', () => {
+    const e = new SwitchEngine({ functionId: 'two-color-stepless', memory: false, kelvin: 4000, colors: [4000, 3000] });
+    e.press(0);
+    expect(e.state(0).kelvin).toBe(4000);
+    e.press(100); e.press(300); e.press(1300); e.press(1400); e.press(1500); e.press(1600);
+    expect(e.state(1600).kelvin).toBe(3000);
+  });
+});
+
+describe('三色無段調光 (內建記憶)', () => {
+  it('ramps white → soft → yellow → white, one colour per ramp', () => {
+    const e = make('three-color-stepless');
+    e.press(0);
+    let t = 0;
+    const seen: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      e.press((t += 100)); e.press((t += 100)); // quick → start ramp
+      seen.push(e.state(t).kelvin);
+      e.press((t += 1000)); e.press((t += 100)); // quick → stop
+    }
+    expect(seen).toEqual([6000, 4000, 3000, 6000]);
+  });
+});
+
 describe('三色一夜光', () => {
   it('cycles white → soft → yellow → yellow night light', () => {
     const d = driver(make('tri-color-night'));

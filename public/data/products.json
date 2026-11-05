@@ -68,7 +68,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/9公分_正面調色商品_1000x1000-1-300x300.jpg",
    "link": "https://www.varilumi.com/product/recessed-light-7-12cm-8-12w-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -79,7 +81,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/調色商品3000K_GPT-300x300.png",
    "link": "https://www.varilumi.com/product/15w-15cm-color-adjustable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -102,7 +106,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/官網商品封面800X800-11-300x300.png",
    "link": "https://www.varilumi.com/product/recessed-light-30w-15cm-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -113,7 +119,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/調色商品800x800-300x300.jpg",
    "link": "https://www.varilumi.com/product/adjustable-recessed-light-7-9cm-8-12w-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -124,7 +132,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/調色商品1000x1000-1-300x300.jpg",
    "link": "https://www.varilumi.com/product/recessed-downlight-7-9cm-8-12w-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -135,7 +145,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/調色型商品-300x300.png",
    "link": "https://www.varilumi.com/product/deep-recessed-anti-glare-led-downlight-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -158,7 +170,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/調色型_全白框_商品1000x1000-300x300.jpg",
    "link": "https://www.varilumi.com/product/recessed-light-30w-20cm-color-adjustable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   }
  ],
@@ -207,7 +221,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/迷你軌道燈-4-1-300x300.png",
    "link": "https://www.varilumi.com/product/tracklight-15w-short-projector-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -242,7 +258,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/商品混桶_800x800-300x300.jpg",
    "link": "https://www.varilumi.com/product/tracklight-15w-wide-angle-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -253,7 +271,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/25-300x300.png",
    "link": "https://www.varilumi.com/product/tracklight-15w-zoom-cob-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -276,7 +296,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/WP新官網商品圖封面-20-300x300.png",
    "link": "https://www.varilumi.com/product/tracklight-22w-zoom-cob-color-tunable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   }
  ],
@@ -301,7 +323,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/吸頂投射燈-15W-COB光源-300x300.jpg",
    "link": "https://www.varilumi.com/product/ceiling-projector-light-15w-color-tunable-cob/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -324,7 +348,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/外觀_漸黃_800x800-300x300.jpg",
    "link": "https://www.varilumi.com/product/ceiling-downlight-15w-color-tunable-diffused/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -347,7 +373,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/飛利明Varilumi吸頂燈-商品封面-1-300x300.png",
    "link": "https://www.varilumi.com/product/ceilinglight-wall-switch-dimmable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -372,7 +400,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/Henry_白_暗黃_800x800-300x300.jpg",
    "link": "https://www.varilumi.com/product/24v-color-adjustable/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   },
   {
@@ -407,7 +437,9 @@
    "image": "https://www.varilumi.com/wp-content/uploads/25-1-300x300.png",
    "link": "https://www.varilumi.com/product/4ft-18w-color-adjustable-shelf-light/",
    "functions": [
-    "tri-color-night"
+    "tri-color-night",
+    "two-color-stepless",
+    "three-color-stepless"
    ]
   }
  ]

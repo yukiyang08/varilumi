@@ -631,3 +631,19 @@ a { color: var(--brand-ink); }
   .mem-seg button { padding: 6px 9px; font-size: 13px; }
   .mem-desc, .mem-live { font-size: 13px; }
 }
+
+/* ================================================================ 兩色／三色無段調光 */
+.steps.colors { margin-bottom: 8px; }
+.steps.colors li { position: relative; }
+.steps .next { font-style: normal; font-size: 10.5px; margin-left: 4px; padding: 0 5px; border-radius: 6px; background: #fff1d6; color: var(--brand-ink); }
+.steps li.cur .next { display: none; }
+.mem-builtin { font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #fff; color: var(--brand-ink); box-shadow: inset 0 0 0 1px var(--brand-1); }
+.fn-anim.multi { gap: 3px; }
+.fn-anim .mini-glide { width: 26px; height: 8px; border-radius: 999px; background: #e9e2d7; overflow: hidden; display: inline-block; }
+.fn-anim .mini-glide > span {
+  display: block; height: 100%; width: 100%; border-radius: inherit; transform-origin: left;
+  background: linear-gradient(90deg, #3a342d, var(--c)); transform: scaleX(0.04);
+  animation: miniglide calc(var(--n) * 2s) ease-in-out infinite; animation-delay: calc(var(--i) * 2s);
+}
+@keyframes miniglide { 0% { transform: scaleX(0.04); } 30% { transform: scaleX(1); } 45%, 100% { transform: scaleX(0.04); } }
+@media (prefers-reduced-motion: reduce) { .fn-anim .mini-glide > span { animation: none; transform: none; } }

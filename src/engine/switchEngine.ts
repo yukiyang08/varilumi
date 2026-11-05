@@ -26,6 +26,8 @@ export interface EngineOptions {
   memory: boolean;
   /** fixed colour temperature for 調光型 functions */
   kelvin: number;
+  /** colours for 兩色無段調光 (two of 白/柔/黃); defaults to the function's own list */
+  colors?: number[];
 }
 
 export interface LightState {
@@ -35,6 +37,10 @@ export interface LightState {
   kelvin: number;
   stepIndex: number;
   stepCount: number;
+  /** stepless functions: which colour is on, how many there are, and which one the next 快切 ramps */
+  colorIndex: number;
+  colorCount: number;
+  nextColorIndex: number;
   ramping: boolean;
   /** 0..1 progress of the 6 s ramp */
   rampProgress: number;
@@ -65,6 +71,9 @@ export class SwitchEngine {
   private rampStart: number | null = null;
   private memStep = 0;
   private memLevel = 1;
+  private colorIdx = 0; // stepless: colour that is on
+  private nextColor = 0; // stepless: colour the next 快切 will ramp
+  private memColor = 0;
   private flashAt: number | null = null;
   private lastAction: Action = null;
   private event: EngineEvent = null;
@@ -89,8 +98,15 @@ export class SwitchEngine {
     if (memOn && !fnChanged) {
       this.settle(now);
       this.memStep = this.stepIndex;
-      if (this.rampStart === null) this.memLevel = this.held;
+      if (this.rampStart === null) {
+        this.memLevel = this.held;
+        this.memColor = this.colorIdx;
+      }
     }
+    const n = this.colors.length;
+    if (this.colorIdx >= n) this.colorIdx = 0;
+    if (this.nextColor >= n) this.nextColor = 0;
+    if (this.memColor >= n) this.memColor = 0;
     if (fnChanged) {
       this.switchOn = false;
       this.offAt = now - 10 * QUICK_MS; // long enough ago that the next press is a slow one
@@ -100,6 +116,9 @@ export class SwitchEngine {
       this.rampStart = null;
       this.memStep = 0;
       this.memLevel = 1;
+      this.colorIdx = 0;
+      this.nextColor = 0;
+      this.memColor = 0;
       this.flashAt = null;
       this.lastAction = null;
       this.event = null;
@@ -110,6 +129,18 @@ export class SwitchEngine {
     return FUNCTIONS[this.opts.functionId];
   }
 
+  /** 記憶 is either chosen (加記憶功能) or built into the function (記憶兩色/三色無段調光). */
+  private get memOn(): boolean {
+    return this.opts.memory || !!this.def.memoryBuiltIn;
+  }
+
+  /** Colours a stepless function works with: one fixed colour, or the 兩色/三色 list. */
+  private get colors(): number[] {
+    const d = this.def;
+    if (d.mode === 'multi-stepless') return this.opts.colors && d.id === 'two-color-stepless' ? this.opts.colors : d.colors!;
+    return [this.opts.kelvin];
+  }
+
   /** Settle a ramp that ran to completion without being stopped. */
   private settle(now: number): void {
     if (this.rampStart === null) return;
@@ -118,9 +149,11 @@ export class SwitchEngine {
       const doneAt = this.rampStart + RAMP_MS;
       this.rampStart = null;
       this.held = 1;
+      this.nextColor = (this.colorIdx + 1) % this.colors.length;
       if (this.switchOn) this.event = 'ramp-done';
-      if (this.opts.memory) {
+      if (this.memOn) {
         this.memLevel = 1;
+        this.memColor = this.colorIdx;
         this.flashAt = doneAt; // flash once to show "memorised at 100%"
       }
     }
@@ -148,25 +181,34 @@ export class SwitchEngine {
         this.stepIndex = (this.stepIndex + 1) % this.def.steps.length;
         this.event = 'step';
       } else {
-        this.stepIndex = this.opts.memory ? this.memStep : 0;
-        this.event = action === 'first' ? 'first' : this.opts.memory ? 'slow-memory' : 'slow-default';
+        this.stepIndex = this.memOn ? this.memStep : 0;
+        this.event = action === 'first' ? 'first' : this.memOn ? 'slow-memory' : 'slow-default';
       }
-      if (this.opts.memory) this.memStep = this.stepIndex;
+      if (this.memOn) this.memStep = this.stepIndex;
     } else {
+      // 無段調光 (one colour) and 兩色/三色無段調光 (each new ramp moves on to the next colour)
+      const n = this.colors.length;
       const wasRamping = this.rampStart !== null && this.offAt !== null;
       if (quick && wasRamping) {
         // stop the ramp at the level it had reached when the switch went off
         this.held = rampLevel(this.offAt! - this.rampStart!);
         this.rampStart = null;
-        if (this.opts.memory) this.memLevel = this.held;
+        this.nextColor = (this.colorIdx + 1) % n;
+        if (this.memOn) {
+          this.memLevel = this.held;
+          this.memColor = this.colorIdx;
+        }
         this.event = 'ramp-stop';
       } else if (quick) {
+        this.colorIdx = this.nextColor;
         this.rampStart = now;
         this.event = 'ramp-start';
       } else {
         this.rampStart = null;
-        this.held = this.opts.memory ? this.memLevel : 1;
-        this.event = action === 'first' ? 'first' : this.opts.memory ? 'slow-memory' : 'slow-default';
+        this.held = this.memOn ? this.memLevel : 1;
+        this.colorIdx = this.memOn ? this.memColor : 0;
+        this.nextColor = this.colorIdx; // the first 快切 re-tunes the colour that is on
+        this.event = action === 'first' ? 'first' : this.memOn ? 'slow-memory' : 'slow-default';
       }
     }
     this.lastAction = action;
@@ -185,12 +227,14 @@ export class SwitchEngine {
       const step = def.steps[this.stepIndex];
       level = step.level;
       if (step.kelvin) kelvin = step.kelvin;
-    } else if (ramping) {
-      rampProgress = Math.min((now - this.rampStart!) / RAMP_MS, 1);
-      level = rampLevel(now - this.rampStart!);
     } else {
-      level = this.held;
-      rampProgress = 0;
+      kelvin = this.colors[this.colorIdx];
+      if (ramping) {
+        rampProgress = Math.min((now - this.rampStart!) / RAMP_MS, 1);
+        level = rampLevel(now - this.rampStart!);
+      } else {
+        level = this.held;
+      }
     }
 
     const flashing = this.flashAt !== null && now >= this.flashAt && now - this.flashAt < FLASH_MS;
@@ -200,6 +244,9 @@ export class SwitchEngine {
       kelvin,
       stepIndex: def.mode === 'steps' ? this.stepIndex : 0,
       stepCount: def.mode === 'steps' ? def.steps.length : 0,
+      colorIndex: def.mode === 'steps' ? 0 : this.colorIdx,
+      colorCount: def.mode === 'steps' ? 0 : this.colors.length,
+      nextColorIndex: def.mode === 'steps' ? 0 : this.nextColor,
       ramping,
       rampProgress,
       flashing,
