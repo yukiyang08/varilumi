@@ -14,8 +14,10 @@ export interface LayerMeta {
 }
 
 const MAX_LAYERS = 4;
-/** Dusk-window ambient strength relative to the render, so night-light glow stays the hero at 1%. */
-const BASE_WEIGHT = 0.45;
+/** Dusk-window ambient as a fraction of the fixture's full-power light. Relative to the fixture, not the
+ *  render: recessed/track renders came out ~20-70x dimmer than ceiling/cove (Blender spot power only leaves
+ *  through the cone), so a fixed ambient weight drowned their 1% glow in window light. */
+const BASE_FRAC = 0.025;
 /** Mean scene luminance that "all lights on" is normalised to, so every room shows at a similar brightness. */
 const TARGET_LUM = 0.42;
 
@@ -65,6 +67,7 @@ export class Compositor {
   private names: string[] = [];
   private meta: LayerMeta | null = null;
   private weights: number[] = [0, 0, 0, 0];
+  private baseW = 0;
   private exposure = 1;
   private targetExposure = 1;
   private raf = 0;
@@ -131,6 +134,7 @@ export class Compositor {
     ['uBase', 'uL0', 'uL1', 'uL2', 'uL3'].forEach((n, i) => gl.uniform1i(this.uni[n], i < this.tex.length ? i : 0));
     this.names = layerNames;
     this.meta = meta;
+    this.baseW = (BASE_FRAC * this.fixtureRef()) / (meta.layers.base?.meanLum ?? 0.05);
     this.weights = [0, 0, 0, 0];
     this.canvas.width = meta.width;
     this.canvas.height = meta.height;
@@ -156,14 +160,8 @@ export class Compositor {
   private computeExposure(): number {
     if (!this.meta) return 1;
     const L = this.meta.layers;
-    const base = (L.base?.meanLum ?? 0.05) * BASE_WEIGHT;
-    // reference: every group at full power, one colour channel each
-    const groups = new Set(this.names.map((n) => n.replace(/_\d+$/, '')));
-    let ref = base;
-    groups.forEach((g) => {
-      const k = this.names.find((n) => n.startsWith(g + '_'));
-      if (k) ref += L[k]?.meanLum ?? 0;
-    });
+    const base = (L.base?.meanLum ?? 0.05) * this.baseW;
+    const ref = base + this.fixtureRef();
     let cur = base;
     this.names.forEach((n, i) => (cur += this.weights[i] * (L[n]?.meanLum ?? 0)));
     // normalise "all on" to TARGET_LUM, then open up partially as the room gets darker
@@ -172,14 +170,20 @@ export class Compositor {
     return norm * adapt;
   }
 
-  private normExposure(): number {
-    if (!this.meta) return 1;
-    const L = this.meta.layers;
-    let ref = (L.base?.meanLum ?? 0.05) * BASE_WEIGHT;
+  /** Mean luminance of every fixture group at full power, one colour channel each. */
+  private fixtureRef(): number {
+    const L = this.meta?.layers ?? {};
+    let ref = 0;
     new Set(this.names.map((n) => n.replace(/_\d+$/, ''))).forEach((g) => {
       const k = this.names.find((n) => n.startsWith(g + '_'));
       if (k) ref += L[k]?.meanLum ?? 0;
     });
+    return ref;
+  }
+
+  private normExposure(): number {
+    if (!this.meta) return 1;
+    const ref = (this.meta.layers.base?.meanLum ?? 0.05) * this.baseW + this.fixtureRef();
     return Math.pow(TARGET_LUM / ref, 0.85);
   }
 
@@ -206,7 +210,7 @@ export class Compositor {
     gl.useProgram(this.prog);
     this.weights.forEach((w, i) => gl.uniform1f(this.uni[`uW${i}`], w));
     gl.uniform1f(this.uni.uExposure, this.exposure);
-    gl.uniform1f(this.uni.uBaseW, BASE_WEIGHT);
+    gl.uniform1f(this.uni.uBaseW, this.baseW);
     gl.uniform1f(this.uni.uGrain, Math.min(Math.max((this.exposure / this.normExposure() - 1.4) * 0.012, 0), 0.03));
     gl.uniform1f(this.uni.uTime, (t / 1000) % 100);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
