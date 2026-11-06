@@ -1,10 +1,10 @@
 import { FUNCTIONS, kelvinLabel } from '../engine/functions';
 import type { LightState } from '../engine/switchEngine';
 import type { Setup } from '../scenes';
-import { FunctionPicker, HowTo, MemoryCard, MoreSettings, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
+import { FunctionPicker, MemoryToggle, MoreSettings, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
 import { SceneView } from './SceneView';
 import { SceneToast, type Toast } from './SceneToast';
-import { TUT_DONE, TUT_STEPS } from './Tutorial';
+import type { CoachTarget } from './Tutorial';
 import { SwitchHint, WallSwitch, type FingerTap } from './WallSwitch';
 
 interface Props {
@@ -21,7 +21,9 @@ interface Props {
   finger: FingerTap | null;
   toast: Toast | null;
   crumbs: React.ReactNode;
-  tut: { step: number; onSkip: () => void; onClose: () => void } | null;
+  card: React.ReactNode;
+  learning: boolean;
+  coach: CoachTarget | null;
   after: React.ReactNode;
 }
 
@@ -35,8 +37,7 @@ export function MobileLayout(p: Props) {
   const { state, setup } = p;
   const def = FUNCTIONS[p.cfg.functionId];
   const lit = state.switchOn && state.level > 0;
-  const tutDone = p.tut && p.tut.step >= TUT_STEPS.length;
-  const tutLine = p.tut ? (tutDone ? TUT_DONE : TUT_STEPS[p.tut.step]) : null;
+  const { learning } = p;
 
   return (
     <div className="m-app">
@@ -44,6 +45,7 @@ export function MobileLayout(p: Props) {
         <div className="m-picture">
           <SceneView setup={setup} weights={p.weights} />
           <SceneToast toast={p.toast} />
+          {!learning && <MemoryToggle cfg={p.cfg} onConfig={p.onConfig} />}
           <div className={`m-readout ${lit ? 'lit' : ''}`} aria-live="polite">
             <span className="m-big">{state.switchOn ? (state.flashing ? '快閃' : `${pct(state.level)}%`) : '關燈'}</span>
             {state.switchOn && (
@@ -59,48 +61,30 @@ export function MobileLayout(p: Props) {
       </div>
 
       <div className="m-body">
-        <FunctionPicker cfg={p.cfg} onConfig={p.onConfig} compact />
-        <MemoryCard cfg={p.cfg} state={state} onConfig={p.onConfig} />
+        {p.card}
+        {!learning && <FunctionPicker cfg={p.cfg} onConfig={p.onConfig} compact />}
         <div className="m-status">
           <StatusView cfg={p.cfg} state={state} hideReadout />
         </div>
-        <MoreSettings cfg={p.cfg} onConfig={p.onConfig} compact />
-        <HowTo cfg={p.cfg} />
-        {p.after}
+        {!learning && (
+          <>
+            <MoreSettings cfg={p.cfg} onConfig={p.onConfig} compact />
+            {p.after}
+          </>
+        )}
       </div>
 
       <div className="m-dock" role="group" aria-label={`${setup.fixture.name}牆壁開關`}>
-        {p.tut && tutLine ? (
-          <div className={`m-tut ${tutDone ? 'done' : ''}`} role="status" aria-live="polite">
-            {!tutDone && (
-              <span className="m-tut-dots" aria-hidden="true">
-                {TUT_STEPS.map((_, i) => (
-                  <i key={i} className={i < p.tut!.step ? 'ok' : i === p.tut!.step ? 'cur' : ''} />
-                ))}
-              </span>
-            )}
-            <span className="m-tut-text">
-              <b>
-                {tutDone ? '' : `${p.tut.step + 1}. `}
-                {tutLine.title}
-              </b>
-            </span>
-            <button type="button" className="link" onClick={tutDone ? p.tut.onClose : p.tut.onSkip}>
-              {tutDone ? '關閉' : '略過'}
-            </button>
-          </div>
-        ) : (
-          <p className="m-hint">
-            <span className="m-dock-name">
-              {setup.room.name}{setup.fixture.name}・{def.plainName}
-            </span>
-            <span className="m-dock-hint">
-              <SwitchHint on={state.switchOn} offFor={state.offFor} />
-            </span>
-          </p>
-        )}
+        <p className="m-hint">
+          <span className="m-dock-name">
+            {setup.room.name}{setup.fixture.name}・{def.plainName}
+          </span>
+          <span className="m-dock-hint">
+            <SwitchHint on={state.switchOn} offFor={state.offFor} />
+          </span>
+        </p>
         <div className="m-dock-row">
-          <QuickSlowButtons onQuick={p.onQuick} onSlow={p.onSlow} busy={p.busy} className="m-side" />
+          <QuickSlowButtons onQuick={p.onQuick} onSlow={p.onSlow} busy={p.busy} className="m-side" coach={p.coach} />
           <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={p.onPress} label={setup.fixture.name} compact finger={p.finger} />
         </div>
       </div>

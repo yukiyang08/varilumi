@@ -166,7 +166,7 @@ describe('無段調光 ramp curve (measured on the driver)', () => {
   });
 });
 
-describe('兩色無段調光 (內建記憶)', () => {
+describe('兩色無段調光', () => {
   it('first 快切 ramps the first colour, a second 快切 stops it; the next 快切 ramps the second colour', () => {
     const e = make('two-color-stepless');
     e.press(0); // first on: white 100%
@@ -189,8 +189,23 @@ describe('兩色無段調光 (內建記憶)', () => {
     expect(e.state(5700).level).toBeCloseTo(rampLevel(2000), 6);
   });
 
-  it('always remembers: 慢切 comes back to the last colour and brightness', () => {
-    const e = make('two-color-stepless'); // memory option off, but built in
+  it('without memory 慢切 goes back to white 100%', () => {
+    const e = make('two-color-stepless');
+    e.press(0);
+    e.press(100); e.press(300); // ramp white
+    e.press(1300); e.press(1400); // stop white
+    e.press(1500); e.press(1600); // ramp yellow
+    e.press(4600); e.press(4700); // stop yellow
+    e.press(5000);
+    e.press(9000);
+    const s = e.state(9000);
+    expect(s.event).toBe('slow-default');
+    expect(s.kelvin).toBe(6000);
+    expect(s.level).toBe(1);
+  });
+
+  it('with memory 慢切 comes back to the last colour and brightness', () => {
+    const e = make('two-color-stepless', true);
     e.press(0);
     e.press(100); e.press(300); // ramp white
     e.press(1300); e.press(1400); // quick → stop white
@@ -209,8 +224,8 @@ describe('兩色無段調光 (內建記憶)', () => {
     expect(e.state(9200).ramping).toBe(true);
   });
 
-  it('an unstopped ramp flashes, memorises 100% and moves on to the next colour', () => {
-    const e = make('two-color-stepless');
+  it('with memory an unstopped ramp flashes, memorises 100% and moves on to the next colour', () => {
+    const e = make('two-color-stepless', true);
     e.press(0); e.press(100); e.press(300); // ramp white from 300
     const done = 300 + RAMP_MS;
     expect(e.state(done + 50).flashing).toBe(true);
@@ -227,7 +242,7 @@ describe('兩色無段調光 (內建記憶)', () => {
   });
 });
 
-describe('三色無段調光 (內建記憶)', () => {
+describe('三色無段調光', () => {
   it('ramps white → soft → yellow → white, one colour per ramp', () => {
     const e = make('three-color-stepless');
     e.press(0);

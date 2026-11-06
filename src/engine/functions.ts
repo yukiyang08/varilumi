@@ -31,12 +31,9 @@ export interface FunctionDef {
   steps: Step[];
   /** colours a multi-stepless function ramps through, in order */
   colors?: number[];
-  /** the function always remembers (記憶兩色/三色無段調光), so there is no 沒記憶 option */
-  memoryBuiltIn?: boolean;
   /** whether the customer picks one fixed colour temperature (調光型) */
   colorSelectable: boolean;
   summary: string;
-  howTo: string[];
 }
 
 export const KELVIN = { white: 6000, soft: 4000, yellow: 3000 } as const;
@@ -66,7 +63,6 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     ],
     colorSelectable: true,
     summary: '一盞燈四種亮度，色溫固定。最經典、最直覺。',
-    howTo: ['開燈：100% 全亮', '連按兩下開關（快切）：跳到下一段', '100% → 50% → 25% → 1% 夜燈 → 循環', '關燈超過 3 秒再開（慢切）：回到 100%'],
   },
   stepless: {
     id: 'stepless',
@@ -79,7 +75,6 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     steps: [{ level: 1, label: '100%' }],
     colorSelectable: true,
     summary: '1～100% 任意亮度。無段是「無限多段」，不是沒有段數。',
-    howTo: ['開燈：100% 全亮', '連按兩下（快切）：從 1% 夜燈開始，約 6 秒亮到 100%（先慢後快）', '亮度剛好時再連按兩下：停在這個亮度', '關燈超過 3 秒再開（慢切）：回到 100%'],
   },
   'tri-color-night': {
     id: 'tri-color-night',
@@ -97,47 +92,32 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     ],
     colorSelectable: false,
     summary: '白、柔、黃三種色溫全亮，第四段是黃光小夜燈。',
-    howTo: ['開燈：白光全亮', '連按兩下（快切）：白 → 柔 → 黃 → 黃光夜燈 → 循環', '關燈超過 3 秒再開（慢切）：回到白光'],
   },
   'two-color-stepless': {
     id: 'two-color-stepless',
     name: '兩色無段調光',
     plainName: '兩色無段調光',
     need: '兩種光色都想微調亮度',
-    needDesc: '白光、黃光各自從夜燈慢慢變亮，停在剛好的亮度，還會記住',
+    needDesc: '白光、黃光各自從夜燈慢慢變亮，停在剛好的亮度',
     family: '調色型',
     mode: 'multi-stepless',
     colors: [KELVIN.white, KELVIN.yellow],
     steps: [{ level: 1, kelvin: KELVIN.white, label: '白光 100%' }],
     colorSelectable: false,
-    memoryBuiltIn: true,
-    summary: '兩種色溫自由選，每一色都能無段調光，並且內建記憶。',
-    howTo: [
-      '慢切開燈：回到上次關燈前的光色和亮度',
-      '連按兩下（快切）：第一色從夜燈開始約 6 秒慢慢變亮，亮度剛好時再快切停住並記住',
-      '再快切一下：換第二色從夜燈慢慢變亮，再快切停住並記住',
-      '兩種光色可以自由選（例如白光＋黃光）',
-    ],
+    summary: '兩種色溫自由選，每一色都能無段調光。',
   },
   'three-color-stepless': {
     id: 'three-color-stepless',
     name: '三色無段調光',
     plainName: '三色無段調光',
     need: '三種光色、亮度都想自己調',
-    needDesc: '白、柔、黃三種光色輪流從夜燈慢慢變亮，停在剛好的亮度，還會記住',
+    needDesc: '白、柔、黃三種光色輪流從夜燈慢慢變亮，停在剛好的亮度',
     family: '調色型',
     mode: 'multi-stepless',
     colors: [KELVIN.white, KELVIN.soft, KELVIN.yellow],
     steps: [{ level: 1, kelvin: KELVIN.white, label: '白光 100%' }],
     colorSelectable: false,
-    memoryBuiltIn: true,
-    summary: '白、柔、黃三種色溫都能無段調光，並且內建記憶。調法跟兩色無段一樣，多一色。',
-    howTo: [
-      '慢切開燈：回到上次關燈前的光色和亮度',
-      '連按兩下（快切）：白光從夜燈開始約 6 秒慢慢變亮，亮度剛好時再快切停住並記住',
-      '再快切：換柔光、再換黃光，同樣慢慢變亮、快切停住',
-      '白 → 柔 → 黃 → 循環',
-    ],
+    summary: '白、柔、黃三種色溫都能無段調光。調法跟兩色無段一樣，多一色。',
   },
 };
 

@@ -129,9 +129,8 @@ export class SwitchEngine {
     return FUNCTIONS[this.opts.functionId];
   }
 
-  /** 記憶 is either chosen (加記憶功能) or built into the function (記憶兩色/三色無段調光). */
   private get memOn(): boolean {
-    return this.opts.memory || !!this.def.memoryBuiltIn;
+    return this.opts.memory;
   }
 
   /** Colours a stepless function works with: one fixed colour, or the 兩色/三色 list. */

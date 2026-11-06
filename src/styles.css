@@ -199,15 +199,24 @@ a { color: var(--brand-ink); }
   box-shadow: inset 0 0 0 2px var(--brand-1), var(--shadow); animation: pop 0.25s ease-out;
 }
 .tutorial.done { grid-template-columns: 1fr auto; }
-.tutorial p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.tutorial.no-dots { grid-template-columns: 1fr auto; }
+.tutorial > b { font-size: 14.5px; line-height: 1.4; }
+/* the button the coach points at */
+.coach { position: relative; animation: coachpulse 1.4s ease-in-out infinite; }
+.coach.quick { --c: 224, 122, 16; }
+.coach.slow { --c: 61, 122, 140; }
+.coach::after {
+  content: '按這裡'; position: absolute; top: -9px; right: 8px; padding: 1px 7px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; color: #fff; background: rgb(var(--c));
+}
+@keyframes coachpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(var(--c), 0.55); } 50% { box-shadow: 0 0 0 7px rgba(var(--c), 0); } }
+@media (prefers-reduced-motion: reduce) { .coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--c)); } }
 .tut-dots { display: grid; gap: 4px; }
 .tut-dots span { width: 8px; height: 8px; border-radius: 50%; background: #ddd4c6; }
 .tut-dots .cur { background: var(--brand-2); }
 .tut-dots .ok { background: #7bb38a; }
 @keyframes pop { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
 
-.howto ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; }
-.howto li { margin: 2px 0; }
 
 /* ---------- products */
 .products { margin-top: 28px; }
@@ -326,17 +335,6 @@ a { color: var(--brand-ink); }
 .switch-wrap.compact { width: 108px; }
 .switch-wrap.compact .switch-ring { width: 108px; height: 108px; }
 .switch-wrap.compact .plate { inset: 13px; }
-.m-tut {
-  display: flex; align-items: center; gap: 8px; margin: 0 0 6px; padding: 6px 6px 6px 10px; border-radius: 10px;
-  background: #fff8e1; box-shadow: inset 0 0 0 1.5px var(--brand-1); font-size: 13.5px; animation: pop 0.25s ease-out;
-}
-.m-tut.done { background: #eef7ef; box-shadow: inset 0 0 0 1.5px #7bb38a; }
-.m-tut-text { flex: 1; min-width: 0; }
-.m-tut .link { padding: 4px 8px; font-size: 13px; }
-.m-tut-dots { display: flex; gap: 3px; }
-.m-tut-dots i { width: 7px; height: 7px; border-radius: 50%; background: #ddd4c6; }
-.m-tut-dots i.cur { background: var(--brand-2); }
-.m-tut-dots i.ok { background: #7bb38a; }
 .is-mobile .products { margin-top: 8px; }
 .is-mobile .foot { margin-top: 8px; }
 
@@ -497,6 +495,7 @@ a { color: var(--brand-ink); }
 .tw-frame { --w: 190px; --h: 100px; position: relative; width: var(--w); height: var(--h); }
 .switch-wrap.compact .tw-frame { --w: 150px; --h: 80px; }
 .tw-progress { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); overflow: visible; pointer-events: none; }
+.tw-progress .ring-slow { stroke-width: 3; vector-effect: non-scaling-stroke; fill: none; stroke: var(--slow); }
 .tw-progress .ring-progress { stroke-width: 3; vector-effect: non-scaling-stroke; fill: none; stroke: var(--quick); stroke-linecap: round; }
 
 .tw-plate {
@@ -560,30 +559,22 @@ a { color: var(--brand-ink); }
 .m-dock-row .m-side.quick { order: 2; }
 .m-side small { white-space: nowrap; }
 
-/* ================================================================ v4: memory made obvious */
-/* 記憶功能: a 沒記憶 / 加記憶功能 choice like the order page, then plain explanations */
-.memory-card {
-  display: grid; gap: 6px; margin-top: 10px; padding: 12px 14px; border-radius: 14px;
-  background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); transition: background 0.15s, box-shadow 0.15s;
+/* 記憶功能 toggle on the picture's top-right corner */
+.mem-toggle {
+  position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 14px; border: 0; border-radius: 999px; color: #fff; font-size: 13.5px; white-space: nowrap;
+  background: rgba(20, 16, 12, 0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
-.memory-card.on { background: #fff8e1; box-shadow: inset 0 0 0 2px var(--brand-1); }
-.mem-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.mem-title { font-weight: 700; font-size: 15.5px; }
-.mem-seg { display: inline-grid; grid-auto-flow: column; padding: 3px; border-radius: 11px; background: var(--surface-2); }
-.mem-seg button { border: 0; background: none; padding: 7px 12px; border-radius: 8px; font-size: 14px; color: var(--muted); white-space: nowrap; }
-.mem-seg button.active { background: #fff; color: var(--ink); font-weight: 700; box-shadow: 0 1px 3px rgba(60, 40, 10, 0.15); }
-.memory-card.on .mem-seg button.active { color: var(--brand-ink); }
-.memory-card p { margin: 0; }
-.mem-desc { font-size: 13.5px; line-height: 1.5; }
-.mem-desc b, .mem-live b { color: var(--brand-ink); }
-.mem-live { font-size: 13.5px; font-weight: 500; padding: 6px 10px; border-radius: 9px; background: rgba(255, 255, 255, 0.75); }
-.mem-fit { font-size: 12.5px; color: var(--muted); }
-.mem-note { font-size: 12px; color: var(--muted); }
+.mem-toggle b { min-width: 1.2em; }
+.mem-knob { position: relative; width: 34px; height: 20px; border-radius: 999px; background: rgba(255, 255, 255, 0.3); transition: background 0.15s; }
+.mem-knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.mem-toggle.on .mem-knob { background: var(--brand-1); }
+.mem-toggle.on .mem-knob::after { transform: translateX(14px); }
 
 /* the result of a 慢切, shown on the picture */
 .picture { position: relative; }
 .scene-toast {
-  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 4; width: max-content; max-width: calc(100% - 24px);
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 4; width: max-content; max-width: calc(100% - 24px);
   display: grid; gap: 2px; text-align: center; padding: 9px 14px; border-radius: 14px; color: #fff;
   background: rgba(20, 16, 12, 0.66); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); animation: toastin 3.2s ease-out forwards; pointer-events: none;
@@ -597,10 +588,8 @@ a { color: var(--brand-ink); }
 /* ================================================================ v4: phone layout — more room for the controls */
 .m-stage .scene { max-height: 34vh; }
 .m-body { gap: 10px; padding-top: 10px; padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
-.m-body .memory-card { margin-top: 0; }
 .m-status { padding: 10px 12px; }
 .m-dock { padding-top: 6px; }
-.m-tut { margin-bottom: 6px; padding: 5px 6px 5px 10px; font-size: 13px; }
 .m-hint { margin-bottom: 4px; }
 .m-dock-row { gap: 8px; }
 .m-side { padding: 10px 4px; border-radius: 14px; }
@@ -627,9 +616,6 @@ a { color: var(--brand-ink); }
   .m-crumbs .crumb small { display: none; }
   .m-crumbs .crumb { padding: 7px 6px; }
   .m-top .brand small { display: none; }
-  .memory-card { padding: 10px 12px; }
-  .mem-seg button { padding: 6px 9px; font-size: 13px; }
-  .mem-desc, .mem-live { font-size: 13px; }
 }
 
 /* ================================================================ 兩色／三色無段調光 */
@@ -637,7 +623,6 @@ a { color: var(--brand-ink); }
 .steps.colors li { position: relative; }
 .steps .next { font-style: normal; font-size: 10.5px; margin-left: 4px; padding: 0 5px; border-radius: 6px; background: #fff1d6; color: var(--brand-ink); }
 .steps li.cur .next { display: none; }
-.mem-builtin { font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #fff; color: var(--brand-ink); box-shadow: inset 0 0 0 1px var(--brand-1); }
 .fn-anim.multi { gap: 3px; }
 .fn-anim .mini-glide { width: 26px; height: 8px; border-radius: 999px; background: #e9e2d7; overflow: hidden; display: inline-block; }
 .fn-anim .mini-glide > span {

@@ -4,6 +4,7 @@ import type { LightState } from '../engine/switchEngine';
 import type { Setup } from '../scenes';
 import { FnAnim } from './FnAnim';
 import { WallSwitch, type FingerTap } from './WallSwitch';
+import type { CoachTarget } from './Tutorial';
 
 export interface GroupConfig {
   functionId: FunctionId;
@@ -37,7 +38,7 @@ export function eventText(state: LightState, cfg: GroupConfig): string {
         ? `快切 → ${kelvinLabel(state.kelvin)}從夜燈開始慢慢變亮…亮度剛好時再快切停住`
         : '快切 → 從夜燈開始慢慢變亮…亮度剛好時再連按兩下';
     case 'ramp-stop':
-      return multi ? `快切 → 停在 ${now}，已記住` : `快切 → 停在 ${now}`;
+      return `快切 → 停在 ${now}`;
     case 'ramp-done':
       return cfg.memory ? '亮到 100%：快閃一下＝已自動記憶在 100%' : '亮到 100% 了';
     case 'slow-default':
@@ -204,88 +205,18 @@ export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfi
   );
 }
 
-export function HowTo({ cfg }: { cfg: GroupConfig }) {
-  const def = FUNCTIONS[cfg.functionId];
-  return (
-    <div className="panel-block howto">
-      <h3 className="block-title">{def.plainName}怎麼用</h3>
-      <ul>
-        {def.howTo.map((h) => (
-          <li key={h}>{h}</li>
-        ))}
-        {cfg.memory && <li>加記憶功能：慢切開燈維持上次關燈前的亮度，不必重調</li>}
-      </ul>
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ 記憶功能 */
 
-
 /**
- * 記憶功能, worded like Varilumi's guide and order page: a 沒記憶 / 加記憶功能 choice, what each one does,
- * who it suits, and a live line saying what the next 慢切 will bring back.
+ * 記憶功能 toggle, overlaid on the picture's top-right corner. The 慢切 toast on the picture shows what it does.
  */
-export function MemoryCard({ cfg, state, onConfig }: { cfg: GroupConfig; state: LightState; onConfig: (p: Partial<GroupConfig>) => void }) {
-  const def = FUNCTIONS[cfg.functionId];
-  const what = def.family === '調色型' ? '光色和亮度' : '亮度';
-  if (def.memoryBuiltIn) {
-    const live = !state.switchOn ? (
-      <>關燈中：慢切開燈會回到關燈前的{what}</>
-    ) : state.ramping ? (
-      <>漸亮中：快切停住的{what}會被記住</>
-    ) : (
-      <>
-        現在關燈，下次慢切開燈會是 <b>{stateLabel(cfg.functionId, state)}</b>
-      </>
-    );
-    return (
-      <div className="memory-card on">
-        <div className="mem-head">
-          <span className="mem-title">記憶功能</span>
-          <span className="mem-builtin">此功能內建記憶</span>
-        </div>
-        <p className="mem-desc">每次慢切開燈，都是上次關燈前的{what}。快切停住的那一刻就會記住。</p>
-        <p className="mem-live">{live}</p>
-        <p className="mem-note">漸亮時 6 秒內沒有快切，燈會快閃一下，代表這個光色自動記憶在 100%。</p>
-      </div>
-    );
-  }
-  let live: React.ReactNode = null;
-  if (cfg.memory) {
-    if (!state.switchOn) live = <>關燈中：慢切開燈會回到關燈前的{what}</>;
-    else if (state.ramping) live = <>漸亮中：停住的{what}會被記住</>;
-    else live = <>現在關燈，下次慢切開燈會是 <b>{stateLabel(cfg.functionId, state)}</b></>;
-  }
+export function MemoryToggle({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void }) {
   return (
-    <div className={`memory-card ${cfg.memory ? 'on' : ''}`}>
-      <div className="mem-head">
-        <span className="mem-title">記憶功能</span>
-        <div className="mem-seg" role="radiogroup" aria-label="記憶功能">
-          <button type="button" role="radio" aria-checked={!cfg.memory} className={!cfg.memory ? 'active' : ''} onClick={() => onConfig({ memory: false })}>
-            沒記憶
-          </button>
-          <button type="button" role="radio" aria-checked={cfg.memory} className={cfg.memory ? 'active' : ''} onClick={() => onConfig({ memory: true })}>
-            加記憶功能
-          </button>
-        </div>
-      </div>
-      {cfg.memory ? (
-        <p className="mem-desc">
-          每次慢切開燈（關燈超過 3 秒），都維持上次關燈前的{what}，不必重調。
-        </p>
-      ) : (
-        <p className="mem-desc">
-          每次慢切開燈都是預設的 <b>{def.steps[0].label}</b>。想要其他{what}，再用快切重調。
-        </p>
-      )}
-      {live && <p className="mem-live">{live}</p>}
-      {cfg.memory && def.mode === 'stepless' && <p className="mem-note">漸亮時 6 秒內沒有快切，燈會快閃一下，代表自動記憶在 100%。</p>}
-      <p className="mem-fit">
-        適合：{cfg.memory ? '調好亮度後一直用同一個亮度，偶爾才改' : '平常都全亮，偶爾才調暗一下'}
-      </p>
-      {cfg.memory && <p className="mem-note">想要記住後不被快切調走（上鎖），可洽飛利明 LINE 客服。</p>}
-    </div>
+    <button type="button" role="switch" aria-checked={cfg.memory} className={`mem-toggle ${cfg.memory ? 'on' : ''}`} onClick={() => onConfig({ memory: !cfg.memory })}>
+      記憶功能
+      <span className="mem-knob" aria-hidden="true" />
+      <b>{cfg.memory ? '開' : '關'}</b>
+    </button>
   );
 }
 
@@ -346,17 +277,20 @@ interface Props {
   busy: boolean;
   finger?: FingerTap | null;
   tutorial?: React.ReactNode;
+  /** first visit, tutorial running: only the switch is shown */
+  learning?: boolean;
+  coach?: CoachTarget | null;
 }
 
 /** 慢切 on the left, 快切 on the right. */
-export function QuickSlowButtons({ onQuick, onSlow, busy, className }: { onQuick: () => void; onSlow: () => void; busy: boolean; className?: string }) {
+export function QuickSlowButtons({ onQuick, onSlow, busy, className, coach }: { onQuick: () => void; onSlow: () => void; busy: boolean; className?: string; coach?: CoachTarget | null }) {
   return (
     <>
-      <button type="button" className={`${className} slow`} onClick={onSlow} disabled={busy}>
+      <button type="button" className={`${className} slow ${coach === 'slow' ? 'coach' : ''}`} onClick={onSlow} disabled={busy}>
         <b>慢切</b>
         <small>關超過3秒才開</small>
       </button>
-      <button type="button" className={`${className} quick`} onClick={onQuick} disabled={busy}>
+      <button type="button" className={`${className} quick ${coach === 'quick' ? 'coach' : ''}`} onClick={onQuick} disabled={busy}>
         <b>快切</b>
         <small>關了馬上開</small>
       </button>
@@ -364,7 +298,7 @@ export function QuickSlowButtons({ onQuick, onSlow, busy, className }: { onQuick
   );
 }
 
-export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, finger, tutorial }: Props) {
+export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, finger, tutorial, learning, coach }: Props) {
   return (
     <section className="panel" aria-label={`${setup.fixture.name}控制`}>
       <div className="panel-block switch-block">
@@ -374,16 +308,18 @@ export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQu
           <StatusView cfg={cfg} state={state} power={power} />
         </div>
         <div className="shortcuts">
-          <QuickSlowButtons onQuick={onQuick} onSlow={onSlow} busy={busy} className="btn" />
+          <QuickSlowButtons onQuick={onQuick} onSlow={onSlow} busy={busy} className="btn" coach={coach} />
         </div>
       </div>
-      <div className="panel-block">
-        <h3 className="block-title">選一個功能</h3>
-        <FunctionPicker cfg={cfg} onConfig={onConfig} />
-        <MemoryCard cfg={cfg} state={state} onConfig={onConfig} />
-      </div>
-      <MoreSettings cfg={cfg} onConfig={onConfig} />
-      <HowTo cfg={cfg} />
+      {!learning && (
+        <>
+          <div className="panel-block">
+            <h3 className="block-title">選一個功能</h3>
+            <FunctionPicker cfg={cfg} onConfig={onConfig} />
+          </div>
+          <MoreSettings cfg={cfg} onConfig={onConfig} />
+        </>
+      )}
     </section>
   );
 }

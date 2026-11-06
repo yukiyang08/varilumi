@@ -17,9 +17,12 @@ const MAX_LAYERS = 4;
 /** Dusk-window ambient as a fraction of the fixture's full-power light. Relative to the fixture, not the
  *  render: recessed/track renders came out ~20-70x dimmer than ceiling/cove (Blender spot power only leaves
  *  through the cone), so a fixed ambient weight drowned their 1% glow in window light. */
-const BASE_FRAC = 0.025;
+const BASE_FRAC = 0.012;
 /** Mean scene luminance that "all lights on" is normalised to, so every room shows at a similar brightness. */
 const TARGET_LUM = 0.42;
+/** How far the eye opens up as the room dims: exposure × (full / current)^ADAPT_EXP, at most ADAPT_MAX. */
+const ADAPT_EXP = 0.6;
+const ADAPT_MAX = 20;
 
 const VS = `
 attribute vec2 p;
@@ -36,8 +39,20 @@ uniform float uExposure;
 uniform float uBaseW;
 uniform float uGrain;
 uniform float uTime;
+uniform vec2 uTexel;
 
 vec3 dec(vec3 e){ vec3 y = min(pow(e, vec3(2.2)), vec3(0.996)); return y / (1.0 - y); }
+// Light layers: the 8-bit encoding keeps only coarse steps in the bright glow and the top codes jump ~2x
+// apart. Invisible at 100% (it all maps to white) but at 1% eye adaptation lifts those values into the
+// midtones as blocky stairs. Cap the top codes and soften by one pixel (tent filter) to hide it.
+// ponytail: a real fix is re-encoding from the EXRs with more precision (blender/encode_layers.py).
+vec3 decL(vec3 e){ vec3 y = min(pow(e, vec3(2.2)), vec3(0.9)); return y / (1.0 - y); }
+vec3 layer(sampler2D s){
+  vec2 d = uTexel, f = vec2(uTexel.x, -uTexel.y);
+  return 0.5 * decL(texture2D(s, uv).rgb)
+       + 0.125 * (decL(texture2D(s, uv + d).rgb) + decL(texture2D(s, uv - d).rgb)
+                + decL(texture2D(s, uv + f).rgb) + decL(texture2D(s, uv - f).rgb));
+}
 
 vec3 aces(vec3 x){ // Narkowicz ACES fit
   const float a=2.51, b=0.03, c=2.43, d=0.59, e=0.14;
@@ -50,10 +65,10 @@ float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)) + uTime) * 437
 
 void main(){
   vec3 L = uBaseW * dec(texture2D(uBase, uv).rgb);
-  if (uW0 > 0.0) L += uW0 * dec(texture2D(uL0, uv).rgb);
-  if (uW1 > 0.0) L += uW1 * dec(texture2D(uL1, uv).rgb);
-  if (uW2 > 0.0) L += uW2 * dec(texture2D(uL2, uv).rgb);
-  if (uW3 > 0.0) L += uW3 * dec(texture2D(uL3, uv).rgb);
+  if (uW0 > 0.0) L += uW0 * layer(uL0);
+  if (uW1 > 0.0) L += uW1 * layer(uL1);
+  if (uW2 > 0.0) L += uW2 * layer(uL2);
+  if (uW3 > 0.0) L += uW3 * layer(uL3);
   vec3 c = toSRGB(aces(L * uExposure * 0.8));
   // sensor-like grain only when the eye/camera has "opened up" in a dark room
   c += (hash(uv * 1024.0) - 0.5) * uGrain;
@@ -106,7 +121,7 @@ export class Compositor {
     const loc = gl.getAttribLocation(p, 'p');
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    for (const n of ['uBase', 'uL0', 'uL1', 'uL2', 'uL3', 'uW0', 'uW1', 'uW2', 'uW3', 'uExposure', 'uBaseW', 'uGrain', 'uTime']) {
+    for (const n of ['uBase', 'uL0', 'uL1', 'uL2', 'uL3', 'uW0', 'uW1', 'uW2', 'uW3', 'uExposure', 'uBaseW', 'uGrain', 'uTime', 'uTexel']) {
       this.uni[n] = gl.getUniformLocation(p, n);
     }
   }
@@ -139,6 +154,7 @@ export class Compositor {
     this.canvas.width = meta.width;
     this.canvas.height = meta.height;
     gl.viewport(0, 0, meta.width, meta.height);
+    gl.uniform2f(this.uni.uTexel, 1 / meta.width, 1 / meta.height);
     this.targetExposure = this.computeExposure();
     this.exposure = this.targetExposure;
     this.ready = true;
@@ -156,7 +172,12 @@ export class Compositor {
     this.exposure = this.targetExposure;
   }
 
-  /** Eye adaptation: darker scene → open up, but only partially, so dim still reads as dim. */
+  /**
+   * Eye adaptation: darker scene → open up. Tuned to what a person in the room sees, not to the photometric
+   * ratio: at 1% the eye adapts enough that the room around is still faintly visible (mean L* ≈ 24 vs 58 at
+   * 100%), while each step down still reads darker. Exponent 0.36 / cap 6 matched Stevens' cube-root law
+   * exactly but looked near-black on a screen viewed in a lit room.
+   */
   private computeExposure(): number {
     if (!this.meta) return 1;
     const L = this.meta.layers;
@@ -166,7 +187,7 @@ export class Compositor {
     this.names.forEach((n, i) => (cur += this.weights[i] * (L[n]?.meanLum ?? 0)));
     // normalise "all on" to TARGET_LUM, then open up partially as the room gets darker
     const norm = Math.pow(TARGET_LUM / ref, 0.85);
-    const adapt = Math.min(Math.max(Math.pow(ref / Math.max(cur, 1e-4), 0.36), 1), 6);
+    const adapt = Math.min(Math.max(Math.pow(ref / Math.max(cur, 1e-4), ADAPT_EXP), 1), ADAPT_MAX);
     return norm * adapt;
   }
 

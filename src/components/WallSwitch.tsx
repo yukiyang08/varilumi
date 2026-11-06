@@ -69,6 +69,8 @@ export function WallSwitch({ on, offFor, onPress, label, compact, finger }: Prop
           {inQuick && (
             <rect x="1.5" y="1.5" width="197" height="101" rx="9" ry="9" pathLength="1" className="ring-progress" strokeDasharray="1 1" strokeDashoffset={1 - progress} />
           )}
+          {/* the 快切 window has passed: pressing now is a 慢切 */}
+          {!on && offFor !== null && !inQuick && <rect x="1.5" y="1.5" width="197" height="101" rx="9" ry="9" className="ring-slow" />}
         </svg>
         <button
           type="button"

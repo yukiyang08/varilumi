@@ -4,9 +4,9 @@ import { SwitchEngine } from './engine/switchEngine';
 import { colorWeights } from './render/compositor';
 import { getSetup, powerText, type FixtureId, type RoomId } from './scenes';
 import { SceneView } from './components/SceneView';
-import { ControlPanel, pct, stateLabel, type GroupConfig } from './components/ControlPanel';
+import { ControlPanel, MemoryToggle, pct, stateLabel, type GroupConfig } from './components/ControlPanel';
 import { ProductCards, type ProductData } from './components/ProductCards';
-import { TUT_STEPS, Tutorial } from './components/Tutorial';
+import { CoachCard, TIPS, TUT_DONE, TUT_STEPS, type CoachTarget, type TipId } from './components/Tutorial';
 import { MobileLayout } from './components/MobileLayout';
 import { Wizard, type WizardStep } from './components/Wizard';
 import { Breadcrumb } from './components/Breadcrumb';
@@ -16,6 +16,7 @@ import { QuickPicker } from './components/QuickPicker';
 import { switchFeedback } from './feedback';
 
 const TUT_KEY = 'varilumi-tutorial-done';
+const TIPS_KEY = 'varilumi-tips-seen';
 const store = {
   get(k: string) {
     try {
@@ -79,6 +80,11 @@ export default function App() {
 
   const [productData, setProducts] = useState<ProductData | null>(null);
   const [tutStep, setTutStep] = useState<number | null>(() => (store.get(TUT_KEY) ? null : 0));
+  const tutRef = useRef(tutStep);
+  tutRef.current = tutStep;
+  const [tip, setTip] = useState<TipId | null>(null);
+  const tipRef = useRef(tip);
+  tipRef.current = tip;
   const [presses, setPresses] = useState(0);
   const [busy, setBusy] = useState(false);
   const [finger, setFinger] = useState<FingerTap | null>(null);
@@ -153,6 +159,15 @@ export default function App() {
     const st = e.state(t);
     switchFeedback(st.switchOn);
     advanceTutorial(st.event);
+    // first lesson: show what the 快切 did, right on the picture
+    if (tutRef.current === 0 && (st.event === 'step' || st.event === 'ramp-start')) {
+      const label = st.event === 'step' ? stateLabel(e.options.functionId, st) : '從夜燈開始慢慢變亮';
+      setToast({ key: t, kind: 'quick', memory: false, label });
+      clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setToast(null), 2400);
+    }
+    const tp = tipRef.current;
+    if (tp && st.event && TIPS[tp]?.doneOn.includes(st.event)) setTip(null);
     setPresses((n) => n + 1);
     if (st.event === 'slow-memory' || st.event === 'slow-default') {
       const label = stateLabel(e.options.functionId, st);
@@ -277,17 +292,45 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presses, setup.key, cfg.functionId, Math.floor(now / 2000)]);
 
-  const tut =
-    tutStep === null
-      ? null
-      : {
-          step: tutStep,
-          onSkip: () => {
-            store.set(TUT_KEY, '1');
-            setTutStep(null);
-          },
-          onClose: () => setTutStep(null),
-        };
+  const learning = tutStep !== null && tutStep < TUT_STEPS.length;
+
+  // one-time tips: the first time a visitor meets a function, or turns 記憶功能 on
+  useEffect(() => {
+    if (learning || step !== 'try') return;
+    let seen: string[] = [];
+    try {
+      seen = JSON.parse(store.get(TIPS_KEY) ?? '[]');
+    } catch {
+      /* ignore */
+    }
+    const id: TipId | null =
+      cfg.memory && !seen.includes('memory') ? 'memory' : TIPS[cfg.functionId] && !seen.includes(cfg.functionId) ? cfg.functionId : null;
+    if (!id) return;
+    store.set(TIPS_KEY, JSON.stringify([...seen, id]));
+    setTip(id);
+    setTutStep(null); // the tip replaces the "學會了" card
+  }, [learning, step, cfg.functionId, cfg.memory]);
+  // a function tip goes away when the visitor switches to another function
+  useEffect(() => {
+    setTip((t) => (t && t !== 'memory' && t !== cfg.functionId ? null : t));
+  }, [cfg.functionId]);
+
+  const coach: CoachTarget | null = learning ? TUT_STEPS[tutStep!].coach : tip ? TIPS[tip]!.coach : null;
+  const card = learning ? (
+    <CoachCard
+      text={TUT_STEPS[tutStep!].title}
+      dots={[tutStep!, TUT_STEPS.length]}
+      closeLabel="略過"
+      onClose={() => {
+        store.set(TUT_KEY, '1');
+        setTutStep(null);
+      }}
+    />
+  ) : tutStep !== null ? (
+    <CoachCard text={TUT_DONE} done closeLabel="關閉" onClose={() => setTutStep(null)} />
+  ) : tip ? (
+    <CoachCard text={TIPS[tip]!.text} closeLabel="知道了" onClose={() => setTip(null)} />
+  ) : null;
 
   const header = (compact: boolean) => (
     <header className={`top ${compact ? 'm-top' : ''}`}>
@@ -386,7 +429,9 @@ export default function App() {
           finger={finger}
           toast={toast}
           crumbs={crumbs}
-          tut={tut}
+          card={card}
+          learning={learning}
+          coach={coach}
           after={
             <>
               {products}
@@ -407,6 +452,7 @@ export default function App() {
           <div className="picture">
             <SceneView setup={setup} weights={weights} />
             <SceneToast toast={toast} />
+            {!learning && <MemoryToggle cfg={cfg} onConfig={configure} />}
           </div>
           <p className="disclaimer">3D 模擬畫面：{setup.detail}。實際光色與亮度依空間而異。</p>
         </div>
@@ -422,11 +468,13 @@ export default function App() {
             onSlow={onSlow}
             busy={busy}
             finger={finger}
-            tutorial={tut ? <Tutorial step={tut.step} onSkip={tut.onSkip} onClose={tut.onClose} /> : null}
+            tutorial={card}
+            learning={learning}
+            coach={coach}
           />
         </div>
       </main>
-      {products}
+      {!learning && products}
       {footer}
     </div>
   );
