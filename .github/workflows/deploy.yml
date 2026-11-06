@@ -3,7 +3,9 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    # Pages only accepts deploys from the repo's default branch; listing both keeps it working while the
+    # default is moved from claude/switch-lab-v1 to main.
+    branches: [main, claude/switch-lab-v1]
   workflow_dispatch:
 
 permissions:
