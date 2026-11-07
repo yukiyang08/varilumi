@@ -21,7 +21,8 @@
   },
   "include": [
     "src",
-    "vite.config.ts"
+    "vite.config.ts",
+    "vite.embed.config.ts"
   ],
   "exclude": [
     "src/**/*.test.ts"

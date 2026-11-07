@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: 開關調光體驗室 Varilumi Lab
- * Description: 在頁面中嵌入開關調光體驗室。用法：[varilumi_lab]，可加 src="網址"、offset="頁首高度(px)"。體驗室裡的操作會以 lab_ 開頭的事件送進網站的 GA。
- * Version: 1.1.0
+ * Description: 在頁面中放入開關調光體驗室。用法：[varilumi_lab]，體驗室直接畫在頁面裡、跟著網站一起捲動。若佈景主題有衝突，可改用 mode="iframe"（鋪滿頁首以下、體驗室自己捲動，可加 offset="頁首高度(px)"）。體驗室裡的操作會以 lab_ 開頭的事件送進網站的 GA。
+ * Version: 1.3.0
  * Author: 飛利明 VariLumi
  */
 
@@ -13,15 +13,35 @@ const VARILUMI_LAB_SRC = 'https://yukiyang08.github.io/varilumi/';
 
 add_shortcode('varilumi_lab', function ($atts) {
     static $listener_done = false;
-    $a = shortcode_atts(['src' => VARILUMI_LAB_SRC, 'offset' => '0'], $atts, 'varilumi_lab');
-    $offset = max(0, intval($a['offset']));
-    // Fill the visible screen (minus the theme's header) so the phone layout's bottom switch stays in reach.
-    $h = $offset ? "calc(100dvh - {$offset}px)" : '100dvh';
-    $html = sprintf(
-        '<iframe src="%s" title="開關調光體驗室" loading="lazy" allow="vibrate" style="display:block;width:100%%;height:100vh;height:%s;min-height:560px;border:0"></iframe>',
-        esc_url($a['src']),
-        esc_attr($h)
-    );
+    $a = shortcode_atts(['src' => VARILUMI_LAB_SRC, 'offset' => '', 'mode' => 'page'], $atts, 'varilumi_lab');
+
+    if ($a['mode'] !== 'iframe') {
+        // Default: the lab is drawn right in this page (no iframe), full width, and scrolls with the site.
+        // embed.js comes from GitHub Pages, so a push still updates it. It calls the site's gtag itself.
+        static $mounted = false;
+        if ($mounted) return ''; // one lab per page
+        $mounted = true;
+        return '<style>html,body{overflow-x:clip}</style>'
+            . '<div id="varilumi-lab" style="display:block;width:100vw;max-width:none;margin-left:calc(50% - 50vw);min-height:100vh"></div>'
+            . '<script type="module" src="' . esc_url(trailingslashit($a['src']) . 'embed.js') . '"></script>';
+    } else {
+        // Full screen: the lab covers everything under the site header and the page itself stops scrolling,
+        // so there is only one scroll (the lab's) and it feels like a normal page of the site.
+        // The header height is measured (admin bar + first <header>) unless offset="" is given.
+        $html = sprintf(
+            '<style>html,body{overflow:hidden!important;height:100%%}</style>'
+            . '<iframe id="varilumi-lab" src="%s" title="開關調光體驗室" allow="vibrate" style="position:fixed;left:0;right:0;bottom:0;top:%dpx;width:100%%;height:auto;border:0;z-index:1;background:#fff"></iframe>',
+            esc_url($a['src']),
+            max(0, intval($a['offset']))
+        );
+        if ($a['offset'] === '') {
+            $html .= '<script>(function(){var f=document.getElementById("varilumi-lab");'
+                . 'function fit(){var t=0;["#wpadminbar","header"].forEach(function(s){var e=document.querySelector(s);'
+                . 'if(e){var r=e.getBoundingClientRect();if(r.height&&r.top<=t+1)t=Math.max(t,r.bottom);}});'
+                . 'f.style.top=Math.round(Math.max(0,t))+"px";}'
+                . 'fit();window.addEventListener("load",fit);window.addEventListener("resize",fit);})();</script>';
+        }
+    }
 
     // Analytics: the lab posts { source: 'varilumi-lab', event, params } to this page; forward it to the
     // site's GA (gtag, or Google Tag Manager's dataLayer) as lab_<event>, so it shares this visit and visitor.

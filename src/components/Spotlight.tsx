@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { appRoot } from '../root';
 
 const PAD = 6;
 
@@ -16,7 +17,7 @@ export function Spotlight({ targets }: { targets: string[] }) {
     let last = '';
     const tick = () => {
       const rs = targets.flatMap((sel) => {
-        const el = document.querySelector(sel);
+        const el = appRoot.querySelector(sel);
         return el ? [el.getBoundingClientRect()] : [];
       });
       const sig = rs.map((r) => `${r.left|0},${r.top|0},${r.width|0},${r.height|0}`).join(';');

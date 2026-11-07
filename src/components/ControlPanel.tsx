@@ -209,7 +209,7 @@ export function MemoryToggle({ cfg, onConfig, onDemo }: { cfg: GroupConfig; onCo
   useEffect(() => {
     if (!help) return;
     const close = (e: PointerEvent) => {
-      if (!wrap.current?.contains(e.target as Node)) setHelp(false);
+      if (!wrap.current || !e.composedPath().includes(wrap.current)) setHelp(false); // composedPath: works inside a shadow root too
     };
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);

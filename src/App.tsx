@@ -16,6 +16,7 @@ import { Spotlight } from './components/Spotlight';
 import { TutorialAsk } from './components/TutorialAsk';
 import { switchFeedback, unlockAudio } from './feedback';
 import { track } from './track';
+import { appRoot } from './root';
 
 const TUT_KEY = 'varilumi-tutorial-done';
 const TIPS_KEY = 'varilumi-tips-seen';
@@ -394,7 +395,7 @@ export default function App() {
   useEffect(() => {
     if (!learning) return;
     const sel = lesson[tutStep!].targets?.[0];
-    const el = sel ? document.querySelector(sel) : null;
+    const el = sel ? appRoot.querySelector(sel) : null;
     const r = el?.getBoundingClientRect();
     // only when it is actually off-screen, so the coach card stays in view
     if (r && (r.top > innerHeight - 80 || r.bottom < 0)) el!.scrollIntoView({ behavior: 'smooth', block: 'center' });

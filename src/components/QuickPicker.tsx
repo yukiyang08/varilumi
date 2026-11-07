@@ -4,6 +4,7 @@ import { FUNCTIONS, FUNCTION_ORDER, type FunctionId } from '../engine/functions'
 import { FIXTURES, ROOMS, type FixtureId, type RoomId } from '../scenes';
 import { FnAnim } from './FnAnim';
 import type { PickKind } from './Breadcrumb';
+import { portalTarget } from '../root';
 
 interface Props {
   kind: PickKind;
@@ -90,5 +91,5 @@ export function QuickPicker(p: Props) {
       </div>
     </>
   );
-  return p.sheet ? createPortal(ui, document.body) : ui;
+  return p.sheet ? createPortal(ui, portalTarget()) : ui;
 }
