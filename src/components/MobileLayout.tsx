@@ -1,7 +1,6 @@
-import { FUNCTIONS, kelvinLabel } from '../engine/functions';
 import type { LightState } from '../engine/switchEngine';
 import type { Setup } from '../scenes';
-import { ColorPick, DemoButton, FunctionPicker, MemoryToggle, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
+import { ColorPick, DemoButton, FunctionPicker, MemoryToggle, PictureStatus, QuickSlowButtons, type GroupConfig } from './ControlPanel';
 import { SceneView } from './SceneView';
 import { SceneToast, type Toast } from './SceneToast';
 import type { CoachTarget } from './Tutorial';
@@ -22,6 +21,8 @@ interface Props {
   toast: Toast | null;
   crumbs: React.ReactNode;
   card: React.ReactNode;
+  /** demo caption shown on the picture instead of the usual toast */
+  demoCaption: React.ReactNode;
   learning: boolean;
   coach: CoachTarget | null;
   onDemo: () => void;
@@ -37,8 +38,6 @@ interface Props {
  */
 export function MobileLayout(p: Props) {
   const { state, setup } = p;
-  const def = FUNCTIONS[p.cfg.functionId];
-  const lit = state.switchOn && state.level > 0;
   const { learning } = p;
 
   return (
@@ -46,18 +45,10 @@ export function MobileLayout(p: Props) {
       <div className="m-stage">
         <div className="m-picture">
           <SceneView setup={setup} weights={p.weights} />
-          <SceneToast toast={p.toast} />
+          {p.demoCaption ?? <SceneToast toast={p.toast} />}
           {!learning && <MemoryToggle cfg={p.cfg} onConfig={p.onConfig} />}
           {!learning && <ColorPick cfg={p.cfg} onConfig={p.onConfig} />}
-          <div className={`m-readout ${lit ? 'lit' : ''}`} aria-live="polite">
-            <span className="m-big">{state.switchOn ? (state.flashing ? '快閃' : `${pct(state.level)}%`) : '關燈'}</span>
-            {state.switchOn && (
-              <span className="m-k">
-                <i style={{ background: kelvinSwatch(state.kelvin) }} />
-                {kelvinLabel(state.kelvin)}・{p.power}
-              </span>
-            )}
-          </div>
+          <PictureStatus cfg={p.cfg} state={state} power={p.power} />
         </div>
         {/* the choices sit right under the pinned picture: never covering it, always one tap away */}
         <div className="m-crumbs">{p.crumbs}</div>
@@ -66,10 +57,7 @@ export function MobileLayout(p: Props) {
       <div className="m-body">
         {p.card}
         {!learning && <FunctionPicker cfg={p.cfg} onConfig={p.onConfig} compact />}
-        <div className="m-status">
-          <StatusView cfg={p.cfg} state={state} hideReadout />
-          {!learning && !p.demoing && <DemoButton cfg={p.cfg} onDemo={p.onDemo} />}
-        </div>
+        {!learning && !p.demoing && <DemoButton cfg={p.cfg} onDemo={p.onDemo} />}
         {!learning && (
           <>
             {p.after}
@@ -78,10 +66,8 @@ export function MobileLayout(p: Props) {
       </div>
 
       <div className="m-dock" role="group" aria-label={`${setup.fixture.name}牆壁開關`}>
-        <p className="m-hint">
-          <span className="m-dock-name">
-            {setup.room.name}{setup.fixture.name}・{def.plainName}
-          </span>
+        {/* only while the light is off: counts down the 快切 window (space kept so the dock doesn't jump) */}
+        <p className="m-hint" style={{ visibility: state.switchOn ? 'hidden' : 'visible' }}>
           <span className="m-dock-hint">
             <SwitchHint on={state.switchOn} offFor={state.offFor} />
           </span>

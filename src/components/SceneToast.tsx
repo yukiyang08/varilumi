@@ -30,3 +30,16 @@ export function SceneToast({ toast }: { toast: Toast | null }) {
     </div>
   );
 }
+
+/** Caption of the animated demo, on the picture where the result shows; re-pops on every new line. */
+export function DemoCaption({ text, onStop }: { text: string; onStop: () => void }) {
+  return (
+    <div className="demo-cap" role="status" aria-live="polite">
+      <span className="tut-badge">▶ 示範中</span>
+      <b key={text}>{text}</b>
+      <button type="button" className="demo-stop" onClick={onStop}>
+        停止
+      </button>
+    </div>
+  );
+}

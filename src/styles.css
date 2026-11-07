@@ -58,8 +58,12 @@ a { color: var(--brand-ink); }
 /* ---------- layout */
 .layout { display: grid; gap: 16px; }
 @media (min-width: 960px) {
-  .layout { grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr); align-items: start; }
+  /* the scene is the hero: it fills the screen height and every column the panel doesn't need */
+  .app:not(.wizard-page):not(.is-mobile) { max-width: 1720px; }
+  .layout { grid-template-columns: minmax(0, 1fr) clamp(360px, 28vw, 420px); align-items: start; }
   .stage { position: sticky; top: 72px; } /* below the pinned breadcrumb */
+  /* fixed height overrides the 3:2 aspect ratio; the canvas covers it, trimming the side walls, not the ceiling */
+  .stage .scene { height: clamp(420px, calc(100vh - 112px), 980px); }
 }
 /* phones in landscape: side-by-side, scene pinned on the left at screen height */
 @media (max-width: 959px) and (orientation: landscape) {
@@ -156,12 +160,6 @@ a { color: var(--brand-ink); }
 .switch-hint b.slow, .m-dock-hint b.slow { color: var(--slow); }
 
 .status { min-width: 0; }
-.readout { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.readout .big { font-size: 34px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.readout.dim .big { color: #a39a8d; }
-.readout .k { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-.readout .watt { font-size: 12.5px; color: var(--muted); padding: 1px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.75); }
-.readout .k i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); }
 
 .steps { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 0; padding: 0; }
 .steps li { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.7); color: var(--muted); }
@@ -173,7 +171,6 @@ a { color: var(--brand-ink); }
 .ramp-marker { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--brand-2), 0 2px 6px rgba(0, 0, 0, 0.2); }
 .ramp-ends { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 6px; gap: 6px; }
 
-.event { margin: 10px 0 0; font-size: 13.5px; font-weight: 500; min-height: 2.8em; }
 
 .shortcuts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .btn { display: grid; justify-items: center; padding: 10px; border-radius: 12px; border: 0; font-weight: 700; background: var(--bg); box-shadow: var(--shadow); }
@@ -196,10 +193,6 @@ a { color: var(--brand-ink); }
 .coach { position: relative; animation: coachpulse 1.4s ease-in-out infinite; }
 .coach.quick { --c: 224, 122, 16; }
 .coach.slow { --c: 61, 122, 140; }
-.coach::after {
-  content: '按這裡'; position: absolute; top: -9px; right: 8px; padding: 1px 7px; border-radius: 999px;
-  font-size: 11px; font-weight: 700; color: #fff; background: rgb(var(--c));
-}
 @keyframes coachpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(var(--c), 0.55); } 50% { box-shadow: 0 0 0 7px rgba(var(--c), 0); } }
 @media (prefers-reduced-motion: reduce) { .coach { animation: none; box-shadow: 0 0 0 2px rgb(var(--c)); } }
 .tut-dots { display: grid; gap: 4px; }
@@ -232,7 +225,6 @@ a { color: var(--brand-ink); }
   .switch-wrap, .switch-ring { width: 112px; }
   .switch-ring { height: 112px; }
   .plate { inset: 14px; }
-  .readout .big { font-size: 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -256,15 +248,6 @@ a { color: var(--brand-ink); }
 .m-scene-tabs button { border: 0; background: none; color: rgba(255, 255, 255, 0.8); padding: 6px 14px; border-radius: 999px; font-size: 14px; }
 .m-scene-tabs button.active { background: #fff; color: var(--ink); font-weight: 700; }
 
-.m-readout {
-  position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: 10px; display: flex; align-items: baseline; gap: 8px;
-  padding: 6px 12px; border-radius: 12px; color: #fff; background: rgba(20, 16, 12, 0.5);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-}
-.m-big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.m-k { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; opacity: 0.9; }
-.m-k i { width: 10px; height: 10px; border-radius: 50%; }
-
 .m-body { display: grid; gap: 14px; padding-top: 14px; padding-bottom: calc(190px + env(safe-area-inset-bottom, 0px)); min-width: 0; }
 .m-body > * { min-width: 0; }
 .m-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 4px; border-radius: 14px; background: var(--surface-2); }
@@ -281,8 +264,8 @@ a { color: var(--brand-ink); }
 }
 .fn-chips::-webkit-scrollbar { display: none; }
 .fn-chip {
-  flex: none; scroll-snap-align: start; display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px;
-  border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font-weight: 700; font-size: 15px; white-space: nowrap;
+  flex: none; scroll-snap-align: start; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font-weight: 700; font-size: 13.5px; white-space: nowrap;
 }
 .fn-chip.active { border-color: transparent; background: var(--ink); color: #fff; }
 .fn-chip.active .badge.dim { background: rgba(245, 196, 50, 0.25); color: #ffd56a; }
@@ -290,10 +273,6 @@ a { color: var(--brand-ink); }
 .fn-sum-line { margin: 0 2px; font-size: 13px; color: var(--muted); }
 
 
-.m-status { background: var(--surface); border-radius: var(--radius); padding: 12px 14px; }
-.m-status .steps { margin-top: 0; }
-.m-status .steps li { font-size: 13px; padding: 5px 10px; }
-.m-status .event { min-height: 0; margin-top: 8px; }
 
 /* bottom dock: the wall switch in thumb reach */
 .m-dock {
@@ -328,9 +307,13 @@ a { color: var(--brand-ink); }
 
 /* recommendation */
 .favorite {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 14px; padding: 12px 14px;
-  border-radius: 14px; background: #fff8e1; box-shadow: inset 0 0 0 1.5px var(--brand-1); animation: pop 0.3s ease-out;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin-bottom: 12px; padding: 8px 12px;
+  border-radius: 12px; background: var(--surface); font-size: 13.5px; animation: pop 0.3s ease-out;
 }
+.fav-go { font-size: 13.5px; padding: 0; }
+.fav-why { flex-basis: 100%; font-size: 12.5px; color: var(--muted); }
+.fav-why summary { cursor: pointer; width: max-content; }
+.products-sub { margin: 2px 0 0; font-size: 14px; color: var(--ink); }
 .favorite .fav-k { color: var(--muted); font-size: 13.5px; }
 .favorite .fav-fn { color: var(--brand-ink); }
 
@@ -472,7 +455,7 @@ a { color: var(--brand-ink); }
 .switch-wrap { width: auto; min-width: 200px; }
 .switch-wrap.compact { width: auto; min-width: 0; }
 .tw-frame { --w: 190px; --h: 100px; position: relative; width: var(--w); height: var(--h); }
-.switch-wrap.compact .tw-frame { --w: 150px; --h: 80px; }
+.switch-wrap.compact .tw-frame { --w: 124px; --h: 64px; }
 .tw-progress { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); overflow: visible; pointer-events: none; }
 .tw-progress .ring-slow { stroke-width: 3; vector-effect: non-scaling-stroke; fill: none; stroke: var(--slow); }
 .tw-progress .ring-progress { stroke-width: 3; vector-effect: non-scaling-stroke; fill: none; stroke: var(--quick); stroke-linecap: round; }
@@ -553,11 +536,21 @@ a { color: var(--brand-ink); }
 .color-pick button i + i { margin-left: -8px; }
 
 /* animated demo */
-.demo-btn { display: block; margin: 10px auto 0; font-weight: 700; font-size: 14px; }
+.demo-btn { display: block; margin: 8px auto 0; font-weight: 600; font-size: 13px; }
 .tut-badge {
   display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; vertical-align: 1px;
   font-size: 11.5px; font-weight: 700; color: #fff; background: var(--brand-2);
 }
+
+.demo-cap {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 6; width: max-content; max-width: calc(100% - 24px);
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 12px; border-radius: 14px; color: #fff;
+  background: rgba(20, 16, 12, 0.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+.demo-cap b { font-size: 15.5px; animation: pop 0.25s ease-out; }
+.demo-cap .tut-badge { margin: 0; flex: none; }
+.demo-stop { flex: none; border: 0; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; color: var(--ink); background: #fff; }
+@media (max-width: 480px) { .demo-cap { top: 52px; gap: 8px; } .demo-cap b { font-size: 14px; } }
 
 /* first-visit question: teach me or not */
 .tut-ask {
@@ -607,11 +600,10 @@ a { color: var(--brand-ink); }
 /* ================================================================ v4: phone layout — more room for the controls */
 .m-stage .scene { max-height: 34vh; }
 .m-body { gap: 10px; padding-top: 10px; padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
-.m-status { padding: 10px 12px; }
 .m-dock { padding-top: 6px; }
 .m-hint { margin-bottom: 4px; }
 .m-dock-row { gap: 8px; }
-.m-side { padding: 10px 4px; border-radius: 14px; }
+.m-side { padding: 8px 4px; border-radius: 14px; }
 .m-side b { font-size: 15px; }
 .m-side small { font-size: 11px; }
 
@@ -644,3 +636,47 @@ a { color: var(--brand-ink); }
 }
 @keyframes miniglide { 0% { transform: scaleX(0.04); } 30% { transform: scaleX(1); } 45%, 100% { transform: scaleX(0.04); } }
 @media (prefers-reduced-motion: reduce) { .fn-anim .mini-glide > span { animation: none; transform: none; } }
+
+/* phones: a bigger picture (fills, trimming the side walls a little) */
+.m-stage .scene { height: clamp(240px, 44vh, 480px); max-height: none; }
+@media (max-height: 640px) { .m-stage .scene { height: 38vh; } }
+.is-mobile .m-hint { justify-content: flex-end; min-height: 1.4em; }
+/* desktop: the shopping cards sit under the scene */
+.stage .products { margin-top: 18px; }
+
+/* phones: the function row fades out on the right while more functions are hidden off-screen */
+.fn-chips { --fl: 0px; --fr: 0px; }
+.fn-chips.fade-l { --fl: 40px; }
+.fn-chips.fade-r { --fr: 56px; }
+.fn-chips.fade-l, .fn-chips.fade-r {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
+}
+
+/* the light's state on the picture's bottom edge */
+.pic-status {
+  position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 5; display: flex; align-items: center; gap: 14px;
+  padding: 8px 14px; border-radius: 14px; color: #fff; pointer-events: none;
+  background: rgba(20, 16, 12, 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.ps-read { display: grid; flex: none; line-height: 1.15; }
+.ps-read b { font-size: 26px; font-variant-numeric: tabular-nums; }
+.pic-status:not(.lit) .ps-read b { opacity: 0.7; }
+.ps-read small { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; opacity: 0.85; white-space: nowrap; }
+.ps-read small i { width: 10px; height: 10px; border-radius: 50%; }
+.ps-track { flex: 1; min-width: 0; }
+.ps-track .steps { margin: 0; gap: 4px; flex-wrap: nowrap; }
+.ps-track .steps li { background: rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.85); white-space: nowrap; }
+.ps-track .steps li.cur { background: #fff; color: var(--ink); }
+.ps-track .steps.colors { margin-bottom: 6px; }
+.ps-track .ramp { margin-top: 0; }
+.ps-track .ramp-ends { color: rgba(255, 255, 255, 0.75); margin-top: 3px; }
+.ps-track .ramp-bar { height: 8px; }
+.ps-track .ramp-marker { width: 14px; height: 14px; margin: -7px 0 0 -7px; }
+.switch-row { grid-template-columns: 1fr; justify-items: center; }
+@media (max-width: 480px) {
+  .pic-status { left: 8px; right: 8px; bottom: 8px; gap: 10px; padding: 6px 10px; }
+  .ps-read b { font-size: 21px; }
+  .ps-track .steps li { font-size: 11.5px; padding: 3px 7px; }
+  .ps-track .steps .dot { display: none; }
+}

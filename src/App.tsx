@@ -4,23 +4,24 @@ import { SwitchEngine } from './engine/switchEngine';
 import { colorWeights } from './render/compositor';
 import { getSetup, powerText, type FixtureId, type RoomId } from './scenes';
 import { SceneView } from './components/SceneView';
-import { ColorPick, ControlPanel, MemoryToggle, eventText, pct, stateLabel, type GroupConfig } from './components/ControlPanel';
+import { ColorPick, ControlPanel, MemoryToggle, PictureStatus, eventText, pct, stateLabel, type GroupConfig } from './components/ControlPanel';
 import { ProductCards, type ProductData } from './components/ProductCards';
-import { CoachCard, DEMOS, TIPS, TUT_DONE, TUT_STEPS, type CoachTarget, type TipId } from './components/Tutorial';
+import { CoachCard, DEMOS, QUICK_LESSON, TIPS, memoryDemo, type DemoAction, TUT_DONE, TUT_STEPS, type CoachTarget, type TipId } from './components/Tutorial';
 import { MobileLayout } from './components/MobileLayout';
 import { Wizard, type WizardStep } from './components/Wizard';
 import { Breadcrumb } from './components/Breadcrumb';
 import type { FingerTap } from './components/WallSwitch';
-import { SceneToast, type Toast } from './components/SceneToast';
+import { DemoCaption, SceneToast, type Toast } from './components/SceneToast';
 import { QuickPicker } from './components/QuickPicker';
 import { Spotlight } from './components/Spotlight';
 import { TutorialAsk } from './components/TutorialAsk';
 import { switchFeedback, unlockAudio } from './feedback';
+import { track } from './track';
 
 const TUT_KEY = 'varilumi-tutorial-done';
 const TIPS_KEY = 'varilumi-tips-seen';
-/** lit areas during the tutorial: the picture (to see the result), the coach card, the button to press */
-const SPOT_TARGETS = ['.picture, .m-picture', '.tutorial', '.coach'];
+/** lit areas during the tutorial: the picture (to see the result), the coach card, the button to press and the wall switch (pressing it works too) */
+const SPOT_TARGETS = ['.picture, .m-picture', '.tutorial', '.coach', '.tw-frame'];
 const store = {
   get(k: string) {
     try {
@@ -152,6 +153,7 @@ export default function App() {
       if (s === 0 && (ev === 'step' || ev === 'ramp-start' || ev === 'ramp-stop')) return 1;
       if (s === 1 && (ev === 'slow-default' || ev === 'slow-memory')) {
         store.set(TUT_KEY, '1');
+        track('tutorial_complete');
         return 2;
       }
       return s;
@@ -190,29 +192,34 @@ export default function App() {
   const runSequence = useCallback(
     (gap: number): Promise<void> => {
       const TOUCH_MS = 250; // finger reaches the rocker ~250 ms into its 520 ms tap animation
+      // resolves once the finger has actually flipped the switch (timers can run late on a busy page)
       const tap = (at: number) =>
-        setTimeout(() => {
-          const isOn = engine.current.state(performance.now()).switchOn;
-          setFinger((f) => ({ n: (f?.n ?? 0) + 1, target: isOn ? 'bottom' : 'top' }));
-          setTimeout(press, TOUCH_MS);
-        }, at);
+        new Promise<void>((done) =>
+          setTimeout(() => {
+            const isOn = engine.current.state(performance.now()).switchOn;
+            setFinger((f) => ({ n: (f?.n ?? 0) + 1, target: isOn ? 'bottom' : 'top' }));
+            setTimeout(() => {
+              press();
+              done();
+            }, TOUCH_MS);
+          }, at),
+        );
       unlockAudio(); // still inside the click: lets the timed switch presses below make their sound
       const st = engine.current.state(performance.now());
       setBusy(true);
-      let end: number;
+      let taps: Promise<void>[];
       if (st.switchOn) {
-        tap(0); // off
-        tap(gap); // on again, `gap` ms after the first touch
-        end = gap + TOUCH_MS;
+        taps = [tap(0), tap(gap)]; // off, then on again `gap` ms after the first touch
       } else {
         // already off: for 慢切 make sure the off time has passed before switching back on
         const wait = gap >= QUICK_MS && st.offFor !== null && st.offFor < gap ? gap - st.offFor : 0;
-        tap(Math.max(wait - TOUCH_MS, 0));
-        end = Math.max(wait, TOUCH_MS);
+        taps = [tap(Math.max(wait - TOUCH_MS, 0))];
       }
-      setTimeout(() => setBusy(false), end + 50);
-      setTimeout(() => setFinger(null), end + 650);
-      return new Promise((r) => setTimeout(r, end + 150));
+      return Promise.all(taps).then(() => {
+        setBusy(false);
+        setTimeout(() => setFinger(null), 600);
+        return new Promise<void>((r) => setTimeout(r, 100));
+      });
     },
     [press],
   );
@@ -221,36 +228,52 @@ export default function App() {
   const cfgRef = useRef(cfg);
   cfgRef.current = cfg;
   const demoRef = useRef(0);
-  const [demo, setDemo] = useState<{ text: string; act: CoachTarget | null } | null>(null);
+  const [demo, setDemo] = useState<string | null>(null);
   const stopDemo = useCallback(() => {
     demoRef.current++;
     setDemo(null);
   }, []);
-  const runDemo = useCallback(async () => {
-    const id = ++demoRef.current;
-    const alive = () => demoRef.current === id;
-    const fn = engine.current.options.functionId;
-    unlockAudio();
-    setTip(null);
-    setTutStep(null);
-    // start from the lamp freshly switched on at its default
-    engine.current = new SwitchEngine({ ...engine.current.options });
-    engine.current.press(performance.now());
-    const say = (act: CoachTarget | null) => setDemo({ text: eventText(engine.current.state(performance.now()), cfgRef.current), act });
-    say(null);
-    for (const a of DEMOS[fn]) {
-      if (!alive()) return;
-      if (typeof a === 'number') await new Promise((r) => setTimeout(r, a));
-      else {
-        say(a);
-        await runSequence(a === 'quick' ? 350 : SLOW_GAP_MS);
-        if (alive()) say(null);
+  /**
+   * Plays `script` (default: the current function's demo). The lamp starts freshly switched on at its default;
+   * a 記憶功能 demo starts with memory off and the visitor's own setting is put back afterwards.
+   */
+  const runDemo = useCallback(
+    async (script?: DemoAction[], after?: () => void) => {
+      const id = ++demoRef.current;
+      const alive = () => demoRef.current === id;
+      const fn = engine.current.options.functionId;
+      const steps = script ?? DEMOS[fn];
+      const memBefore = cfgRef.current.memory;
+      const memDemo = steps.includes('mem-on');
+      unlockAudio();
+      setTip(null);
+      setTutStep(null);
+      if (memDemo && memBefore) configure({ memory: false });
+      engine.current = new SwitchEngine({ ...engine.current.options, memory: memDemo ? false : memBefore });
+      engine.current.press(performance.now());
+      const say = () => setDemo(eventText(engine.current.state(performance.now()), cfgRef.current));
+      say();
+      for (const a of steps) {
+        if (!alive()) break;
+        if (typeof a === 'number') await new Promise((r) => setTimeout(r, a));
+        else if (a === 'mem-on') {
+          configure({ memory: true });
+          setDemo('打開記憶功能（右上角）：再做一次看看');
+        } else {
+          await runSequence(a === 'quick' ? 350 : SLOW_GAP_MS);
+          if (alive()) say();
+        }
       }
-    }
-    if (!alive()) return;
-    setDemo(null);
-    if (TIPS[fn]) setTip(fn); // your turn now
-  }, [runSequence]);
+      if (memDemo && cfgRef.current.memory !== memBefore) configure({ memory: memBefore });
+      if (!alive()) return;
+      setDemo(null);
+      if (after) after();
+      else if (TIPS[fn]) setTip(fn); // your turn now
+    },
+    // configure is stable (useCallback with no deps)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [runSequence],
+  );
 
   // the visitor's own presses take over from a running demo
   const userPress = useCallback(() => {
@@ -266,6 +289,12 @@ export default function App() {
     void runSequence(SLOW_GAP_MS);
   };
   useEffect(() => stopDemo(), [setup.key, stopDemo]);
+  useEffect(() => {
+    if (step === 'try') track('scene_view', { room, fixture });
+  }, [step, room, fixture]);
+  useEffect(() => {
+    if (step === 'try') track('function_view', { function: cfg.functionId });
+  }, [step, cfg.functionId]);
 
   const configure = useCallback((patch: Partial<GroupConfig>) => {
     const e = engine.current;
@@ -352,7 +381,7 @@ export default function App() {
 
   // one-time tips: the first time a visitor meets a function, or turns 記憶功能 on
   useEffect(() => {
-    if (learning || step !== 'try') return;
+    if (learning || step !== 'try' || demo) return;
     let seen: string[] = [];
     try {
       seen = JSON.parse(store.get(TIPS_KEY) ?? '[]');
@@ -370,7 +399,20 @@ export default function App() {
     }
     const t = setTimeout(() => void runDemo(), 500);
     return () => clearTimeout(t);
-  }, [learning, step, cfg.functionId, cfg.memory, runDemo]);
+  }, [learning, step, cfg.functionId, cfg.memory, runDemo, demo]);
+
+  // end of the 快切 / 慢切 lesson: show 記憶功能 side by side, then the "學會了" card
+  const memLesson = useRef(false);
+  useEffect(() => {
+    if (tutStep === 0) memLesson.current = false;
+    if (tutStep !== TUT_STEPS.length || memLesson.current) return;
+    memLesson.current = true;
+    const t = setTimeout(() => {
+      store.set(TIPS_KEY, JSON.stringify([...new Set([...JSON.parse(store.get(TIPS_KEY) ?? '[]'), 'memory'])]));
+      void runDemo(memoryDemo(engine.current.options.functionId), () => setTutStep(TUT_STEPS.length));
+    }, 900);
+    return () => clearTimeout(t);
+  }, [tutStep, runDemo]);
   // switching function ends its demo and its tip
   useEffect(() => {
     stopDemo();
@@ -381,28 +423,30 @@ export default function App() {
     step === 'try' && askTut ? (
       <TutorialAsk
         onYes={() => {
+          track('tutorial_answer', { answer: 'yes' });
           setAskTut(false);
           setTutStep(0);
         }}
         onNo={() => {
+          track('tutorial_answer', { answer: 'no' });
           store.set(TUT_KEY, '1');
           setAskTut(false);
         }}
       />
     ) : null;
-  const coach: CoachTarget | null = learning ? TUT_STEPS[tutStep!].coach : demo ? demo.act : tip ? TIPS[tip]!.coach : null;
+  const demoCaption = demo ? <DemoCaption text={demo} onStop={stopDemo} /> : null;
+  const coach: CoachTarget | null = learning ? TUT_STEPS[tutStep!].coach : tip && !demo ? TIPS[tip]!.coach : null;
   const card = learning ? (
     <CoachCard
-      text={TUT_STEPS[tutStep!].title}
+      text={tutStep === 0 ? QUICK_LESSON[cfg.functionId] : TUT_STEPS[tutStep!].title}
       dots={[tutStep!, TUT_STEPS.length]}
       closeLabel="略過"
       onClose={() => {
+        track('tutorial_skip', { step: tutStep! + 1 });
         store.set(TUT_KEY, '1');
         setTutStep(null);
       }}
     />
-  ) : demo ? (
-    <CoachCard text={demo.text} badge="▶ 示範中" closeLabel="停止" onClose={stopDemo} />
   ) : tutStep !== null ? (
     <CoachCard text={TUT_DONE} done closeLabel="關閉" onClose={() => setTutStep(null)} />
   ) : tip ? (
@@ -497,13 +541,14 @@ export default function App() {
           onPress={userPress}
           onQuick={onQuick}
           onSlow={onSlow}
-          onDemo={runDemo}
+          onDemo={() => void runDemo()}
           demoing={!!demo}
           busy={busy}
           finger={finger}
           toast={toast}
           crumbs={crumbs}
           card={card}
+          demoCaption={demoCaption}
           learning={learning}
           coach={coach}
           after={
@@ -526,11 +571,13 @@ export default function App() {
         <div className="stage">
           <div className="picture">
             <SceneView setup={setup} weights={weights} />
-            <SceneToast toast={toast} />
+            {demoCaption ?? <SceneToast toast={toast} />}
             {!learning && <MemoryToggle cfg={cfg} onConfig={configure} />}
             {!learning && <ColorPick cfg={cfg} onConfig={configure} />}
+            <PictureStatus cfg={cfg} state={state} power={power} />
           </div>
           <p className="disclaimer">3D 模擬畫面：{setup.detail}。實際光色與亮度依空間而異。</p>
+          {!learning && products}
         </div>
         <div className="side">
           <ControlPanel
@@ -542,7 +589,7 @@ export default function App() {
             onPress={userPress}
             onQuick={onQuick}
             onSlow={onSlow}
-          onDemo={runDemo}
+          onDemo={() => void runDemo()}
           demoing={!!demo}
             busy={busy}
             finger={finger}
@@ -552,7 +599,6 @@ export default function App() {
           />
         </div>
       </main>
-      {!learning && products}
       {footer}
     </div>
   );

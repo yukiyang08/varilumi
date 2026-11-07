@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { COLOR_LABEL, COLOR_PAIRS, FUNCTIONS, FUNCTION_ORDER, KELVIN, MIN_LEVEL, kelvinLabel, type ColorChoice, type FunctionId } from '../engine/functions';
 import type { LightState } from '../engine/switchEngine';
 import type { Setup } from '../scenes';
 import { FnAnim } from './FnAnim';
 import { WallSwitch, type FingerTap } from './WallSwitch';
 import type { CoachTarget } from './Tutorial';
+import { track } from '../track';
 
 export interface GroupConfig {
   functionId: FunctionId;
@@ -66,8 +67,12 @@ const barPos = (l: number) => (Math.max(l, MIN_LEVEL) - MIN_LEVEL) / (1 - MIN_LE
 /* ------------------------------------------------------------------ pieces */
 
 export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; compact?: boolean }) {
-  const def = FUNCTIONS[cfg.functionId];
   const row = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ start: true, end: false });
+  const checkEnd = () => {
+    const b = row.current;
+    if (b) setEdge({ start: b.scrollLeft <= 4, end: b.scrollLeft + b.clientWidth >= b.scrollWidth - 4 });
+  };
   // keep the chosen chip fully in view in the swipeable row (scrolls the row only, never the page)
   useEffect(() => {
     const el = row.current?.querySelector<HTMLElement>('.fn-chip.active');
@@ -77,11 +82,12 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
     if (left < box.scrollLeft + 8 || left + el.offsetWidth > box.scrollLeft + box.clientWidth - 8) {
       box.scrollTo({ left: Math.max(0, left - (box.clientWidth - el.offsetWidth) / 2), behavior: 'smooth' });
     }
+    checkEnd();
   }, [cfg.functionId]);
   if (compact) {
     return (
       <div className="fn-compact">
-        <div className="fn-chips" role="radiogroup" aria-label="開關調光功能" ref={row}>
+        <div className={`fn-chips ${edge.start ? '' : 'fade-l'} ${edge.end ? '' : 'fade-r'}`} role="radiogroup" aria-label="開關調光功能" ref={row} onScroll={checkEnd}>
           {FUNCTION_ORDER.map((id) => {
             const f = FUNCTIONS[id];
             const active = id === cfg.functionId;
@@ -92,10 +98,6 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
             );
           })}
         </div>
-        <p className="fn-sum-line">
-          {def.needDesc}
-          <span className="fn-official">　{def.family}</span>
-        </p>
       </div>
     );
   }
@@ -109,9 +111,6 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
             <span className="fn-name">{f.plainName}</span>
             <FnAnim id={id} />
             <span className="fn-sum">{f.needDesc}</span>
-            <span className="fn-official">
-              <span className={`badge ${f.family === '調光型' ? 'dim' : 'tune'}`}>{f.family}</span>
-            </span>
           </button>
         );
       })}
@@ -119,21 +118,11 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
   );
 }
 
-export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfig; state: LightState; hideReadout?: boolean; power?: string }) {
+/** Where the light is within its function: the steps, or the colours and the 1–100% bar. */
+export function StatusView({ cfg, state }: { cfg: GroupConfig; state: LightState }) {
   const def = FUNCTIONS[cfg.functionId];
-  const lit = state.switchOn && state.level > 0;
   return (
     <div className="status">
-      {!hideReadout && (
-        <div className={`readout ${lit ? '' : 'dim'}`}>
-          <span className="big">{state.switchOn ? (state.flashing ? '快閃' : `${pct(state.level)}%`) : '關'}</span>
-          <span className="k">
-            <i style={{ background: kelvinSwatch(state.kelvin) }} />
-            {state.kelvin}K {kelvinLabel(state.kelvin)}
-          </span>
-          {power && state.switchOn && <span className="watt">耗電 {power}</span>}
-        </div>
-      )}
       {def.mode === 'steps' ? (
         <ol className="steps" aria-label="段數">
           {def.steps.map((s, i) => (
@@ -171,7 +160,39 @@ export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfi
         </div>
         </>
       )}
-      <p className="event" aria-live="polite">{eventText(state, cfg)}</p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ status on the picture */
+
+/**
+ * The light's state along the bottom of the picture: brightness (and power), plus where it is in the
+ * function — the steps, or the 1–100% bar and colours for stepless. The colour name is shown only when it
+ * isn't already the choice in the top-left corner.
+ */
+export function PictureStatus({ cfg, state, power }: { cfg: GroupConfig; state: LightState; power: string }) {
+  const def = FUNCTIONS[cfg.functionId];
+  const lit = state.switchOn && state.level > 0;
+  return (
+    <div className={`pic-status ${lit ? 'lit' : ''}`} aria-live="polite">
+      <div className="ps-read">
+        <b>{state.switchOn ? (state.flashing ? '快閃' : `${pct(state.level)}%`) : '關燈'}</b>
+        {state.switchOn && (
+          <small>
+            {!def.colorSelectable && (
+              <>
+                <i style={{ background: kelvinSwatch(state.kelvin) }} />
+                {kelvinLabel(state.kelvin)}・
+              </>
+            )}
+            {power}
+          </small>
+        )}
+      </div>
+      <div className="ps-track">
+        <StatusView cfg={cfg} state={state} />
+      </div>
     </div>
   );
 }
@@ -183,7 +204,10 @@ export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfi
  */
 export function MemoryToggle({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void }) {
   return (
-    <button type="button" role="switch" aria-checked={cfg.memory} className={`mem-toggle ${cfg.memory ? 'on' : ''}`} onClick={() => onConfig({ memory: !cfg.memory })}>
+    <button type="button" role="switch" aria-checked={cfg.memory} className={`mem-toggle ${cfg.memory ? 'on' : ''}`} onClick={() => {
+        track('memory_toggle', { on: !cfg.memory });
+        onConfig({ memory: !cfg.memory });
+      }}>
       記憶功能
       <span className="mem-knob" aria-hidden="true" />
       <b>{cfg.memory ? '開' : '關'}</b>
@@ -204,7 +228,10 @@ export function ColorPick({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: P
         {COLOR_PAIRS.map((p) => {
           const on = p.colors.join(',') === cur;
           return (
-            <button key={p.label} type="button" role="radio" aria-checked={on} aria-label={p.label} title={p.label} className={on ? 'active' : ''} onClick={() => onConfig({ colors: p.colors })}>
+            <button key={p.label} type="button" role="radio" aria-checked={on} aria-label={p.label} title={p.label} className={on ? 'active' : ''} onClick={() => {
+                track('color_change', { color: p.label });
+                onConfig({ colors: p.colors });
+              }}>
               {p.colors.map((k) => (
                 <i key={k} style={{ background: kelvinSwatch(k) }} />
               ))}
@@ -220,7 +247,10 @@ export function ColorPick({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: P
       {(Object.keys(KELVIN) as ColorChoice[]).map((c) => {
         const on = cfg.kelvin === KELVIN[c];
         return (
-          <button key={c} type="button" role="radio" aria-checked={on} className={on ? 'active' : ''} onClick={() => onConfig({ kelvin: KELVIN[c] })}>
+          <button key={c} type="button" role="radio" aria-checked={on} className={on ? 'active' : ''} onClick={() => {
+              track('color_change', { color: COLOR_LABEL[c] });
+              onConfig({ kelvin: KELVIN[c] });
+            }}>
             <i style={{ background: kelvinSwatch(KELVIN[c]) }} />
             {COLOR_LABEL[c]}
           </button>
@@ -254,8 +284,15 @@ interface Props {
 /** Plays the animated demo of the chosen function. */
 export function DemoButton({ cfg, onDemo }: { cfg: GroupConfig; onDemo: () => void }) {
   return (
-    <button type="button" className="link demo-btn" onClick={onDemo}>
-      ▶ 看「{FUNCTIONS[cfg.functionId].plainName}」怎麼用
+    <button
+      type="button"
+      className="link demo-btn"
+      onClick={() => {
+        track('demo_play', { function: cfg.functionId });
+        onDemo();
+      }}
+    >
+      ⓘ {FUNCTIONS[cfg.functionId].plainName}怎麼操作？
     </button>
   );
 }
@@ -276,14 +313,13 @@ export function QuickSlowButtons({ onQuick, onSlow, busy, className, coach }: { 
   );
 }
 
-export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, finger, tutorial, learning, coach, onDemo, demoing }: Props) {
+export function ControlPanel({ setup, cfg, state, onConfig, onPress, onQuick, onSlow, busy, finger, tutorial, learning, coach, onDemo, demoing }: Props) {
   return (
     <section className="panel" aria-label={`${setup.fixture.name}控制`}>
       <div className="panel-block switch-block">
         {tutorial}
         <div className="switch-row">
           <WallSwitch on={state.switchOn} offFor={state.offFor} onPress={onPress} label={setup.fixture.name} finger={finger} />
-          <StatusView cfg={cfg} state={state} power={power} />
         </div>
         <div className="shortcuts">
           <QuickSlowButtons onQuick={onQuick} onSlow={onSlow} busy={busy} className="btn" coach={coach} />

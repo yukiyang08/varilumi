@@ -1,3 +1,4 @@
+import { track } from '../track';
 import { memo } from 'react';
 import { FUNCTIONS, type FunctionId } from '../engine/functions';
 import type { FixtureId } from '../scenes';
@@ -37,29 +38,38 @@ export const ProductCards = memo(function ProductCards({ data, fixture, fixtureN
     <section className="products" aria-label="推薦商品">
       {favorite && (
         <div className="favorite" role="status">
-          <span className="fav-k">你剛剛最常停在</span>
-          <b>
-            {favorite.label}
-          </b>
-          <span className="fav-k">→ 推薦選購</span>
+          <span className="fav-k">依照你的使用習慣，推薦</span>
           <b className="fav-fn">
             {favorite.functionName}
             {fn.colorSelectable ? `・${favorite.label.split(' ')[0]}` : ''}
           </b>
+          <button type="button" className="link fav-go" onClick={() => document.getElementById('product-row')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}>
+            查看產品 →
+          </button>
+          <details className="fav-why">
+            <summary>為什麼？</summary>
+            你剛剛最常停在 {favorite.label}（約 {favorite.seconds} 秒）。
+          </details>
         </div>
       )}
       <div className="products-head">
-        <h3>
-          喜歡這個功能？有「{fn.name}」的{fixtureName}
-        </h3>
-        <a href={SHOP[fixture]} target="_blank" rel="noopener">
+        <h3>推薦相容燈具</h3>
+        <a href={SHOP[fixture]} target="_blank" rel="noopener" onClick={() => track('shop_all_click', { fixture, function: functionId })}>
           看全部 →
         </a>
       </div>
+      <p className="products-sub">支援「{fn.name}」的飛利明{fixtureName}</p>
       <p className="products-note">下單時在「{fn.family === '調光型' ? '調光功能' : '功能'}」選「{fn.name}」，需要的話再勾選「加記憶功能」。多為訂製品，請先確認尺寸。</p>
-      <div className="product-row">
+      <div className="product-row" id="product-row">
         {list.map((p) => (
-          <a key={p.id} className="product" href={p.link} target="_blank" rel="noopener">
+          <a
+            key={p.id}
+            className="product"
+            href={p.link}
+            target="_blank"
+            rel="noopener"
+            onClick={() => track('product_click', { product: p.name.slice(0, 90), fixture, function: functionId })}
+          >
             <span className="pimg">{p.image && (
                 <img
                   src={p.image}
