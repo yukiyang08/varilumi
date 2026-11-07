@@ -38,10 +38,6 @@ a { color: var(--brand-ink); }
 }
 
 /* ---------- header */
-.top { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
-.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
-.brand b { display: block; font-size: 17px; letter-spacing: 0.04em; }
-.brand small { display: block; color: var(--muted); font-size: 12px; letter-spacing: 0.12em; }
 .link { background: none; border: 0; color: var(--brand-ink); font-weight: 500; padding: 6px 8px; border-radius: 8px; }
 .link:hover { background: var(--surface); }
 
@@ -109,14 +105,9 @@ a { color: var(--brand-ink); }
 .badge.dim { background: #fff3cf; color: #8a5b00; }
 .badge.tune { background: #e5f1f4; color: #2f6473; }
 
-.opts { display: grid; gap: 12px; margin-top: 12px; }
-.opt-label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font-size: 13px; }
 .chip i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
-.chip-white i { background: #f4f6ff; }
-.chip-soft i { background: #ffe9c9; }
-.chip-yellow i { background: #ffcf8a; }
 .chip.active { border-color: transparent; box-shadow: inset 0 0 0 2px var(--brand-2); font-weight: 700; }
 
 .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
@@ -249,9 +240,6 @@ a { color: var(--brand-ink); }
 
 /* ================================================================ phone (portrait) layout */
 .is-mobile { padding-bottom: 0; }
-.m-top { padding-block: 8px; }
-.m-top .brand b { font-size: 16px; }
-.m-top .brand small { letter-spacing: 0.02em; font-size: 12px; }
 
 .m-stage {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6;
@@ -301,8 +289,6 @@ a { color: var(--brand-ink); }
 .fn-chip.active .badge.tune { background: rgba(120, 190, 210, 0.25); color: #a9dcea; }
 .fn-sum-line { margin: 0 2px; font-size: 13px; color: var(--muted); }
 
-.opts.compact { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 0; }
-.opts.compact .chip { padding: 8px 12px; font-size: 14px; }
 
 .m-status { background: var(--surface); border-radius: var(--radius); padding: 12px 14px; }
 .m-status .steps { margin-top: 0; }
@@ -338,17 +324,6 @@ a { color: var(--brand-ink); }
 .is-mobile .products { margin-top: 8px; }
 .is-mobile .foot { margin-top: 8px; }
 
-/* 更多設定 */
-.more { background: var(--surface); border-radius: var(--radius); }
-.more summary {
-  list-style: none; cursor: pointer; padding: 12px 14px; font-weight: 700; display: flex; align-items: baseline; gap: 8px;
-}
-.more summary::-webkit-details-marker { display: none; }
-.more summary::after { content: '＋'; margin-left: auto; color: var(--muted); font-weight: 400; }
-.more[open] summary::after { content: '－'; }
-.more summary small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
-.more-body { display: grid; gap: 14px; padding: 0 14px 14px; }
-.more-body .opts { margin-top: 0; }
 .fixture-pick .group-tabs { margin-bottom: 0; }
 
 /* recommendation */
@@ -443,6 +418,10 @@ a { color: var(--brand-ink); }
   background: var(--bg); padding-block: 6px 2px; margin-bottom: 8px;
 }
 .crumbs-wrap .crumbs { margin: 0; }
+.crumbs-row { display: flex; align-items: center; gap: 8px; }
+.crumbs-row .crumbs { flex: 1; min-width: 0; }
+.crumbs-row .help { flex: none; white-space: nowrap; padding: 6px 4px; }
+.app:not(.is-mobile) { padding-top: 12px; }
 /* phones: the sheet is position:fixed, so its wrapper must not create a stacking context under the dock */
 .is-mobile .crumbs-wrap { position: static; z-index: auto; padding: 0; margin: 0; background: none; }
 /* phones: the choices are a slim bar directly under the pinned picture, so they never cover it
@@ -559,6 +538,46 @@ a { color: var(--brand-ink); }
 .m-dock-row .m-side.quick { order: 2; }
 .m-side small { white-space: nowrap; }
 
+/* 光色 on the picture's top-left corner */
+.color-pick {
+  position: absolute; top: 10px; left: 10px; z-index: 5; display: flex; align-items: center; gap: 2px; padding: 3px;
+  border-radius: 999px; background: rgba(20, 16, 12, 0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.color-pick-label { color: rgba(255, 255, 255, 0.85); font-size: 12.5px; padding: 0 4px 0 8px; }
+.color-pick button {
+  display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: rgba(255, 255, 255, 0.85);
+  padding: 6px 10px; border-radius: 999px; font-size: 13.5px; white-space: nowrap;
+}
+.color-pick button.active { background: #fff; color: var(--ink); font-weight: 700; }
+.color-pick i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); }
+.color-pick button i + i { margin-left: -8px; }
+
+/* animated demo */
+.demo-btn { display: block; margin: 10px auto 0; font-weight: 700; font-size: 14px; }
+.tut-badge {
+  display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; vertical-align: 1px;
+  font-size: 11.5px; font-weight: 700; color: #fff; background: var(--brand-2);
+}
+
+/* first-visit question: teach me or not */
+.tut-ask {
+  width: min(360px, calc(100% - 32px)); padding: 22px 20px 18px; border: 0; border-radius: 20px;
+  background: var(--bg); color: var(--ink); box-shadow: 0 20px 50px rgba(30, 20, 8, 0.3); text-align: center;
+}
+.tut-ask::backdrop { background: rgba(18, 14, 10, 0.55); }
+.tut-ask[open] { animation: pop 0.25s ease-out; }
+.tut-ask h2 { margin: 0 0 6px; font-size: 20px; }
+.tut-ask p { margin: 0 0 18px; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+.tut-ask-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tut-ask-actions button { border: 0; border-radius: 12px; padding: 12px 8px; font-size: 15px; font-weight: 700; }
+.tut-ask-no { background: var(--surface); color: var(--muted); }
+.tut-ask-yes { background: var(--brand-2); color: #fff; }
+
+/* tutorial spotlight: everything dims except the lit areas (it never blocks clicks) */
+.spotlight { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; animation: spotin 0.35s ease-out; }
+@keyframes spotin { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .spotlight { animation: none; } }
+
 /* 記憶功能 toggle on the picture's top-right corner */
 .mem-toggle {
   position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; align-items: center; gap: 8px;
@@ -595,16 +614,10 @@ a { color: var(--brand-ink); }
 .m-side { padding: 10px 4px; border-radius: 14px; }
 .m-side b { font-size: 15px; }
 .m-side small { font-size: 11px; }
-.m-top .help { white-space: nowrap; flex: none; }
-.m-top .brand { min-width: 0; }
-.m-top .brand span { min-width: 0; }
-.m-top .brand small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* short screens (iPhone SE and similar): a smaller picture */
 @media (max-height: 640px) {
   .m-stage .scene { max-height: 30vh; }
-  .m-top { padding-block: 6px; }
-  .m-top .brand img { width: 28px; height: 28px; }
 }
 /* narrow screens: smaller switch and buttons so nothing overlaps; drop the small crumb labels */
 @media (max-width: 380px) {
@@ -615,7 +628,6 @@ a { color: var(--brand-ink); }
   .m-side small { font-size: 10px; }
   .m-crumbs .crumb small { display: none; }
   .m-crumbs .crumb { padding: 7px 6px; }
-  .m-top .brand small { display: none; }
 }
 
 /* ================================================================ 兩色／三色無段調光 */

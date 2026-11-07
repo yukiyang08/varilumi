@@ -119,35 +119,6 @@ export function FunctionPicker({ cfg, onConfig, compact }: { cfg: GroupConfig; o
   );
 }
 
-export function Options({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; compact?: boolean }) {
-  const def = FUNCTIONS[cfg.functionId];
-  return (
-    <div className={`opts ${compact ? 'compact' : ''}`}>
-      {def.colorSelectable && (
-        <div className="opt">
-          {!compact && <span className="opt-label">光色（這個功能固定一種光色）</span>}
-          <div className="chips" role="radiogroup" aria-label="色溫">
-            {(Object.keys(KELVIN) as ColorChoice[]).map((c) => (
-              <button
-                key={c}
-                type="button"
-                role="radio"
-                className={`chip chip-${c} ${cfg.kelvin === KELVIN[c] ? 'active' : ''}`}
-                onClick={() => onConfig({ kelvin: KELVIN[c] })}
-                aria-checked={cfg.kelvin === KELVIN[c]}
-              >
-                <i />
-                {COLOR_LABEL[c]}
-                {!compact && ` ${KELVIN[c]}K`}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function StatusView({ cfg, state, hideReadout, power }: { cfg: GroupConfig; state: LightState; hideReadout?: boolean; power?: string }) {
   const def = FUNCTIONS[cfg.functionId];
   const lit = state.switchOn && state.level > 0;
@@ -220,46 +191,42 @@ export function MemoryToggle({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p
   );
 }
 
-/* ------------------------------------------------------------------ 更多設定 */
+/* ------------------------------------------------------------------ 光色 */
 
-export function MoreSettings({ cfg, onConfig, compact }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; compact?: boolean }) {
+/** Colour choice, overlaid on the picture's top-left corner (only for functions where it can be chosen). */
+export function ColorPick({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void }) {
   const def = FUNCTIONS[cfg.functionId];
   if (def.id === 'two-color-stepless') {
     const cur = (cfg.colors ?? def.colors!).join(',');
     return (
-      <details className="more">
-        <summary>
-          換光色組合<small>兩色溫自由選擇</small>
-        </summary>
-        <div className="more-body">
-          <div className="chips" role="radiogroup" aria-label="兩色組合">
-            {COLOR_PAIRS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                role="radio"
-                aria-checked={p.colors.join(',') === cur}
-                className={`chip ${p.colors.join(',') === cur ? 'active' : ''}`}
-                onClick={() => onConfig({ colors: p.colors })}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </details>
+      <div className="color-pick" role="radiogroup" aria-label="兩色組合">
+        <span className="color-pick-label">光色</span>
+        {COLOR_PAIRS.map((p) => {
+          const on = p.colors.join(',') === cur;
+          return (
+            <button key={p.label} type="button" role="radio" aria-checked={on} aria-label={p.label} title={p.label} className={on ? 'active' : ''} onClick={() => onConfig({ colors: p.colors })}>
+              {p.colors.map((k) => (
+                <i key={k} style={{ background: kelvinSwatch(k) }} />
+              ))}
+            </button>
+          );
+        })}
+      </div>
     );
   }
   if (!def.colorSelectable) return null;
   return (
-    <details className="more">
-      <summary>
-        換光色<small>白光・柔光・黃光</small>
-      </summary>
-      <div className="more-body">
-        <Options cfg={cfg} onConfig={onConfig} compact={compact} />
-      </div>
-    </details>
+    <div className="color-pick" role="radiogroup" aria-label="光色">
+      {(Object.keys(KELVIN) as ColorChoice[]).map((c) => {
+        const on = cfg.kelvin === KELVIN[c];
+        return (
+          <button key={c} type="button" role="radio" aria-checked={on} className={on ? 'active' : ''} onClick={() => onConfig({ kelvin: KELVIN[c] })}>
+            <i style={{ background: kelvinSwatch(KELVIN[c]) }} />
+            {COLOR_LABEL[c]}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -280,6 +247,17 @@ interface Props {
   /** first visit, tutorial running: only the switch is shown */
   learning?: boolean;
   coach?: CoachTarget | null;
+  onDemo?: () => void;
+  demoing?: boolean;
+}
+
+/** Plays the animated demo of the chosen function. */
+export function DemoButton({ cfg, onDemo }: { cfg: GroupConfig; onDemo: () => void }) {
+  return (
+    <button type="button" className="link demo-btn" onClick={onDemo}>
+      ▶ 看「{FUNCTIONS[cfg.functionId].plainName}」怎麼用
+    </button>
+  );
 }
 
 /** 慢切 on the left, 快切 on the right. */
@@ -298,7 +276,7 @@ export function QuickSlowButtons({ onQuick, onSlow, busy, className, coach }: { 
   );
 }
 
-export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, finger, tutorial, learning, coach }: Props) {
+export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQuick, onSlow, busy, finger, tutorial, learning, coach, onDemo, demoing }: Props) {
   return (
     <section className="panel" aria-label={`${setup.fixture.name}控制`}>
       <div className="panel-block switch-block">
@@ -310,6 +288,7 @@ export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQu
         <div className="shortcuts">
           <QuickSlowButtons onQuick={onQuick} onSlow={onSlow} busy={busy} className="btn" coach={coach} />
         </div>
+        {!learning && !demoing && onDemo && <DemoButton cfg={cfg} onDemo={onDemo} />}
       </div>
       {!learning && (
         <>
@@ -317,7 +296,6 @@ export function ControlPanel({ setup, cfg, state, power, onConfig, onPress, onQu
             <h3 className="block-title">選一個功能</h3>
             <FunctionPicker cfg={cfg} onConfig={onConfig} />
           </div>
-          <MoreSettings cfg={cfg} onConfig={onConfig} />
         </>
       )}
     </section>

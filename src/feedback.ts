@@ -6,6 +6,23 @@ export function setMuted(m: boolean) {
   muted = m;
 }
 
+function audio(): AudioContext {
+  return (ctx ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)());
+}
+
+/**
+ * Browsers only let audio start inside a real tap. The 快切 / 慢切 buttons flip the switch a moment later
+ * from a timer, so they call this in their click handler; otherwise the first "off" click is swallowed.
+ */
+export function unlockAudio() {
+  try {
+    const c = audio();
+    if (c.state === 'suspended') void c.resume();
+  } catch {
+    /* audio unavailable */
+  }
+}
+
 export function switchFeedback(on: boolean) {
   try {
     navigator.vibrate?.(on ? 14 : 10);
@@ -14,8 +31,17 @@ export function switchFeedback(on: boolean) {
   }
   if (muted) return;
   try {
-    ctx ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    if (ctx.state === 'suspended') void ctx.resume();
+    const c = audio();
+    // still waking up: play once it is running instead of scheduling into a frozen clock
+    if (c.state === 'suspended') c.resume().then(() => click(c, on), () => undefined);
+    else click(c, on);
+  } catch {
+    /* audio unavailable */
+  }
+}
+
+function click(ctx: AudioContext, on: boolean) {
+  try {
     const t = ctx.currentTime;
     // sharp plastic "tick": filtered noise burst
     const len = Math.floor(ctx.sampleRate * 0.03);

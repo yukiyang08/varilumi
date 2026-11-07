@@ -4,19 +4,23 @@ import { SwitchEngine } from './engine/switchEngine';
 import { colorWeights } from './render/compositor';
 import { getSetup, powerText, type FixtureId, type RoomId } from './scenes';
 import { SceneView } from './components/SceneView';
-import { ControlPanel, MemoryToggle, pct, stateLabel, type GroupConfig } from './components/ControlPanel';
+import { ColorPick, ControlPanel, MemoryToggle, eventText, pct, stateLabel, type GroupConfig } from './components/ControlPanel';
 import { ProductCards, type ProductData } from './components/ProductCards';
-import { CoachCard, TIPS, TUT_DONE, TUT_STEPS, type CoachTarget, type TipId } from './components/Tutorial';
+import { CoachCard, DEMOS, TIPS, TUT_DONE, TUT_STEPS, type CoachTarget, type TipId } from './components/Tutorial';
 import { MobileLayout } from './components/MobileLayout';
 import { Wizard, type WizardStep } from './components/Wizard';
 import { Breadcrumb } from './components/Breadcrumb';
 import type { FingerTap } from './components/WallSwitch';
 import { SceneToast, type Toast } from './components/SceneToast';
 import { QuickPicker } from './components/QuickPicker';
-import { switchFeedback } from './feedback';
+import { Spotlight } from './components/Spotlight';
+import { TutorialAsk } from './components/TutorialAsk';
+import { switchFeedback, unlockAudio } from './feedback';
 
 const TUT_KEY = 'varilumi-tutorial-done';
 const TIPS_KEY = 'varilumi-tips-seen';
+/** lit areas during the tutorial: the picture (to see the result), the coach card, the button to press */
+const SPOT_TARGETS = ['.picture, .m-picture', '.tutorial', '.coach'];
 const store = {
   get(k: string) {
     try {
@@ -79,7 +83,9 @@ export default function App() {
   }
 
   const [productData, setProducts] = useState<ProductData | null>(null);
-  const [tutStep, setTutStep] = useState<number | null>(() => (store.get(TUT_KEY) ? null : 0));
+  // first visit on this device: ask before teaching; the lesson only starts on a yes
+  const [askTut, setAskTut] = useState(() => !store.get(TUT_KEY));
+  const [tutStep, setTutStep] = useState<number | null>(null);
   const tutRef = useRef(tutStep);
   tutRef.current = tutStep;
   const [tip, setTip] = useState<TipId | null>(null);
@@ -182,7 +188,7 @@ export default function App() {
    * would. Each tap starts the finger animation and flips the switch when the fingertip touches the rocker.
    */
   const runSequence = useCallback(
-    (gap: number) => {
+    (gap: number): Promise<void> => {
       const TOUCH_MS = 250; // finger reaches the rocker ~250 ms into its 520 ms tap animation
       const tap = (at: number) =>
         setTimeout(() => {
@@ -190,6 +196,7 @@ export default function App() {
           setFinger((f) => ({ n: (f?.n ?? 0) + 1, target: isOn ? 'bottom' : 'top' }));
           setTimeout(press, TOUCH_MS);
         }, at);
+      unlockAudio(); // still inside the click: lets the timed switch presses below make their sound
       const st = engine.current.state(performance.now());
       setBusy(true);
       let end: number;
@@ -205,11 +212,60 @@ export default function App() {
       }
       setTimeout(() => setBusy(false), end + 50);
       setTimeout(() => setFinger(null), end + 650);
+      return new Promise((r) => setTimeout(r, end + 150));
     },
     [press],
   );
-  const onQuick = () => runSequence(350);
-  const onSlow = () => runSequence(SLOW_GAP_MS);
+
+  // ---- animated demo of the current function: the hand presses the switch, each press is captioned
+  const cfgRef = useRef(cfg);
+  cfgRef.current = cfg;
+  const demoRef = useRef(0);
+  const [demo, setDemo] = useState<{ text: string; act: CoachTarget | null } | null>(null);
+  const stopDemo = useCallback(() => {
+    demoRef.current++;
+    setDemo(null);
+  }, []);
+  const runDemo = useCallback(async () => {
+    const id = ++demoRef.current;
+    const alive = () => demoRef.current === id;
+    const fn = engine.current.options.functionId;
+    unlockAudio();
+    setTip(null);
+    setTutStep(null);
+    // start from the lamp freshly switched on at its default
+    engine.current = new SwitchEngine({ ...engine.current.options });
+    engine.current.press(performance.now());
+    const say = (act: CoachTarget | null) => setDemo({ text: eventText(engine.current.state(performance.now()), cfgRef.current), act });
+    say(null);
+    for (const a of DEMOS[fn]) {
+      if (!alive()) return;
+      if (typeof a === 'number') await new Promise((r) => setTimeout(r, a));
+      else {
+        say(a);
+        await runSequence(a === 'quick' ? 350 : SLOW_GAP_MS);
+        if (alive()) say(null);
+      }
+    }
+    if (!alive()) return;
+    setDemo(null);
+    if (TIPS[fn]) setTip(fn); // your turn now
+  }, [runSequence]);
+
+  // the visitor's own presses take over from a running demo
+  const userPress = useCallback(() => {
+    stopDemo();
+    press();
+  }, [stopDemo, press]);
+  const onQuick = () => {
+    stopDemo();
+    void runSequence(350);
+  };
+  const onSlow = () => {
+    stopDemo();
+    void runSequence(SLOW_GAP_MS);
+  };
+  useEffect(() => stopDemo(), [setup.key, stopDemo]);
 
   const configure = useCallback((patch: Partial<GroupConfig>) => {
     const e = engine.current;
@@ -307,15 +363,34 @@ export default function App() {
       cfg.memory && !seen.includes('memory') ? 'memory' : TIPS[cfg.functionId] && !seen.includes(cfg.functionId) ? cfg.functionId : null;
     if (!id) return;
     store.set(TIPS_KEY, JSON.stringify([...seen, id]));
-    setTip(id);
-    setTutStep(null); // the tip replaces the "學會了" card
-  }, [learning, step, cfg.functionId, cfg.memory]);
-  // a function tip goes away when the visitor switches to another function
+    if (id === 'memory') {
+      setTip(id);
+      setTutStep(null); // the tip replaces the "學會了" card
+      return;
+    }
+    const t = setTimeout(() => void runDemo(), 500);
+    return () => clearTimeout(t);
+  }, [learning, step, cfg.functionId, cfg.memory, runDemo]);
+  // switching function ends its demo and its tip
   useEffect(() => {
+    stopDemo();
     setTip((t) => (t && t !== 'memory' && t !== cfg.functionId ? null : t));
-  }, [cfg.functionId]);
+  }, [cfg.functionId, stopDemo]);
 
-  const coach: CoachTarget | null = learning ? TUT_STEPS[tutStep!].coach : tip ? TIPS[tip]!.coach : null;
+  const askDialog =
+    step === 'try' && askTut ? (
+      <TutorialAsk
+        onYes={() => {
+          setAskTut(false);
+          setTutStep(0);
+        }}
+        onNo={() => {
+          store.set(TUT_KEY, '1');
+          setAskTut(false);
+        }}
+      />
+    ) : null;
+  const coach: CoachTarget | null = learning ? TUT_STEPS[tutStep!].coach : demo ? demo.act : tip ? TIPS[tip]!.coach : null;
   const card = learning ? (
     <CoachCard
       text={TUT_STEPS[tutStep!].title}
@@ -326,32 +401,29 @@ export default function App() {
         setTutStep(null);
       }}
     />
+  ) : demo ? (
+    <CoachCard text={demo.text} badge="▶ 示範中" closeLabel="停止" onClose={stopDemo} />
   ) : tutStep !== null ? (
     <CoachCard text={TUT_DONE} done closeLabel="關閉" onClose={() => setTutStep(null)} />
   ) : tip ? (
     <CoachCard text={TIPS[tip]!.text} closeLabel="知道了" onClose={() => setTip(null)} />
   ) : null;
 
-  const header = (compact: boolean) => (
-    <header className={`top ${compact ? 'm-top' : ''}`}>
-      <a className="brand" href="https://www.varilumi.com/" target="_blank" rel="noopener">
-        <img src={`${import.meta.env.BASE_URL}logo.png`} alt="飛利明 Varilumi" width={compact ? 34 : 44} height={compact ? 34 : 44} />
-        <span>
-          <b>開關調光體驗室</b>
-          <small>{compact ? '不用換開關，按一下就能調光調色' : '飛利明 VariLumi'}</small>
-        </span>
-      </a>
-      {step === 'try' && (
-        <button type="button" className="link help" onClick={() => setTutStep(0)}>
-          ？教學
-        </button>
-      )}
-    </header>
-  );
-
   const crumbs = (
     <div className="crumbs-wrap">
-      <Breadcrumb setup={setup} onEdit={editStep} />
+      <div className="crumbs-row">
+        <Breadcrumb setup={setup} onEdit={editStep} />
+        <button
+          type="button"
+          className="link help"
+          onClick={() => {
+            stopDemo();
+            setTutStep(0);
+          }}
+        >
+          ？教學
+        </button>
+      </div>
       {sheet && (
         <QuickPicker
           kind={sheet}
@@ -386,7 +458,6 @@ export default function App() {
   if (step !== 'try') {
     return (
       <div className={`app ${isMobile ? 'is-mobile' : ''} wizard-page`}>
-        {header(isMobile)}
         {!isMobile && step === 'room' && !single && (
           <div className="hero">
             <h1>
@@ -414,7 +485,8 @@ export default function App() {
   if (isMobile) {
     return (
       <div className="app is-mobile">
-        {header(true)}
+        {learning && <Spotlight targets={SPOT_TARGETS} />}
+        {askDialog}
         <MobileLayout
           setup={setup}
           state={state}
@@ -422,9 +494,11 @@ export default function App() {
           cfg={cfg}
           weights={weights}
           onConfig={configure}
-          onPress={press}
+          onPress={userPress}
           onQuick={onQuick}
           onSlow={onSlow}
+          onDemo={runDemo}
+          demoing={!!demo}
           busy={busy}
           finger={finger}
           toast={toast}
@@ -445,7 +519,8 @@ export default function App() {
 
   return (
     <div className="app">
-      {header(false)}
+      {learning && <Spotlight targets={SPOT_TARGETS} />}
+      {askDialog}
       {crumbs}
       <main className="layout">
         <div className="stage">
@@ -453,6 +528,7 @@ export default function App() {
             <SceneView setup={setup} weights={weights} />
             <SceneToast toast={toast} />
             {!learning && <MemoryToggle cfg={cfg} onConfig={configure} />}
+            {!learning && <ColorPick cfg={cfg} onConfig={configure} />}
           </div>
           <p className="disclaimer">3D 模擬畫面：{setup.detail}。實際光色與亮度依空間而異。</p>
         </div>
@@ -463,9 +539,11 @@ export default function App() {
             state={state}
             power={power}
             onConfig={configure}
-            onPress={press}
+            onPress={userPress}
             onQuick={onQuick}
             onSlow={onSlow}
+          onDemo={runDemo}
+          demoing={!!demo}
             busy={busy}
             finger={finger}
             tutorial={card}

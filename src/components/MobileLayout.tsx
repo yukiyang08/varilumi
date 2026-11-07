@@ -1,7 +1,7 @@
 import { FUNCTIONS, kelvinLabel } from '../engine/functions';
 import type { LightState } from '../engine/switchEngine';
 import type { Setup } from '../scenes';
-import { FunctionPicker, MemoryToggle, MoreSettings, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
+import { ColorPick, DemoButton, FunctionPicker, MemoryToggle, QuickSlowButtons, StatusView, kelvinSwatch, pct, type GroupConfig } from './ControlPanel';
 import { SceneView } from './SceneView';
 import { SceneToast, type Toast } from './SceneToast';
 import type { CoachTarget } from './Tutorial';
@@ -24,13 +24,15 @@ interface Props {
   card: React.ReactNode;
   learning: boolean;
   coach: CoachTarget | null;
+  onDemo: () => void;
+  demoing: boolean;
   after: React.ReactNode;
 }
 
 /**
  * Phone layout, built around the one thing visitors came to do — press the switch:
  *  - full-bleed scene on top with the live reading overlaid on the picture
- *  - the function chips in the middle, everything else under 更多設定
+ *  - the function chips in the middle; colour and 記憶功能 sit on the picture
  *  - the wall switch docked at the bottom in thumb reach, 快切 / 慢切 on either side
  */
 export function MobileLayout(p: Props) {
@@ -46,6 +48,7 @@ export function MobileLayout(p: Props) {
           <SceneView setup={setup} weights={p.weights} />
           <SceneToast toast={p.toast} />
           {!learning && <MemoryToggle cfg={p.cfg} onConfig={p.onConfig} />}
+          {!learning && <ColorPick cfg={p.cfg} onConfig={p.onConfig} />}
           <div className={`m-readout ${lit ? 'lit' : ''}`} aria-live="polite">
             <span className="m-big">{state.switchOn ? (state.flashing ? '快閃' : `${pct(state.level)}%`) : '關燈'}</span>
             {state.switchOn && (
@@ -65,10 +68,10 @@ export function MobileLayout(p: Props) {
         {!learning && <FunctionPicker cfg={p.cfg} onConfig={p.onConfig} compact />}
         <div className="m-status">
           <StatusView cfg={p.cfg} state={state} hideReadout />
+          {!learning && !p.demoing && <DemoButton cfg={p.cfg} onDemo={p.onDemo} />}
         </div>
         {!learning && (
           <>
-            <MoreSettings cfg={p.cfg} onConfig={p.onConfig} compact />
             {p.after}
           </>
         )}
