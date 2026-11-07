@@ -18,7 +18,7 @@ export interface TutStep {
 const TOUR: TutStep[] = [
   { title: '這是模擬的房間：按開關，燈光會即時變化', doneOn: [], targets: ['.picture, .m-picture'] },
   {
-    title: '這裡選功能。調光型（四段、無段調光）只調亮度；調色型（三色一夜光、兩色、三色無段調光）亮度和光色都能換',
+    title: '這裡選功能：調光型（四段、無段）只調亮度；調色型（三色一夜光、兩色、三色無段）還能換光色',
     doneOn: [],
     targets: ['.fn-cards, .fn-compact'],
   },

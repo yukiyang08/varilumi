@@ -395,13 +395,15 @@ export default function App() {
     if (!learning) return;
     const sel = lesson[tutStep!].targets?.[0];
     const el = sel ? document.querySelector(sel) : null;
-    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const r = el?.getBoundingClientRect();
+    // only when it is actually off-screen, so the coach card stays in view
+    if (r && (r.top > innerHeight - 80 || r.bottom < 0)) el!.scrollIntoView({ behavior: 'smooth', block: 'center' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutStep, learning]);
   const coach: CoachTarget | null = learning ? lesson[tutStep!].coach ?? null : tip && !demo ? TIPS[tip]!.coach : null;
   const card = learning ? (
     <CoachCard
-      intro={`${FUNCTIONS[cfg.functionId].plainName}・${FUNCTIONS[cfg.functionId].family}：${
+      intro={lesson[tutStep!].targets ? undefined : `${FUNCTIONS[cfg.functionId].plainName}・${FUNCTIONS[cfg.functionId].family}：${
         FUNCTIONS[cfg.functionId].family === '調光型' ? '只調亮度，光色固定' : '亮度和光色都能換'
       }`}
       text={lesson[tutStep!].title}
