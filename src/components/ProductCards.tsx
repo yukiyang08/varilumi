@@ -2,7 +2,6 @@ import { track } from '../track';
 import { memo } from 'react';
 import { FUNCTIONS, type FunctionId } from '../engine/functions';
 import type { FixtureId } from '../scenes';
-import type { Favorite } from '../App';
 
 export interface Product {
   id: number;
@@ -20,7 +19,6 @@ interface Props {
   fixture: FixtureId;
   fixtureName: string;
   functionId: FunctionId;
-  favorite?: Favorite | null;
 }
 
 const SHOP: Record<FixtureId, string> = {
@@ -30,30 +28,14 @@ const SHOP: Record<FixtureId, string> = {
   cove: 'https://www.varilumi.com/product-category/light-strip/',
 };
 
-export const ProductCards = memo(function ProductCards({ data, fixture, fixtureName, functionId, favorite }: Props) {
+export const ProductCards = memo(function ProductCards({ data, fixture, fixtureName, functionId }: Props) {
   if (!data) return null;
   const list = data[fixture].filter((p) => p.functions.includes(functionId));
   const fn = FUNCTIONS[functionId];
   return (
     <section className="products" aria-label="推薦商品">
-      {favorite && (
-        <div className="favorite" role="status">
-          <span className="fav-k">依照你的使用習慣，推薦</span>
-          <b className="fav-fn">
-            {favorite.functionName}
-            {fn.colorSelectable ? `・${favorite.label.split(' ')[0]}` : ''}
-          </b>
-          <button type="button" className="link fav-go" onClick={() => document.getElementById('product-row')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}>
-            查看產品 →
-          </button>
-          <details className="fav-why">
-            <summary>為什麼？</summary>
-            你剛剛最常停在 {favorite.label}（約 {favorite.seconds} 秒）。
-          </details>
-        </div>
-      )}
       <div className="products-head">
-        <h3>推薦相容燈具</h3>
+        <h3>推薦燈具</h3>
         <a href={SHOP[fixture]} target="_blank" rel="noopener" onClick={() => track('shop_all_click', { fixture, function: functionId })}>
           看全部 →
         </a>

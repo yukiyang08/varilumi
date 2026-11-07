@@ -23,6 +23,7 @@ interface Props {
   card: React.ReactNode;
   /** demo caption shown on the picture instead of the usual toast */
   demoCaption: React.ReactNode;
+  onMemDemo: () => void;
   learning: boolean;
   coach: CoachTarget | null;
   onDemo: () => void;
@@ -46,8 +47,8 @@ export function MobileLayout(p: Props) {
         <div className="m-picture">
           <SceneView setup={setup} weights={p.weights} />
           {p.demoCaption ?? <SceneToast toast={p.toast} />}
-          {!learning && <MemoryToggle cfg={p.cfg} onConfig={p.onConfig} />}
-          {!learning && <ColorPick cfg={p.cfg} onConfig={p.onConfig} />}
+          <MemoryToggle cfg={p.cfg} onConfig={p.onConfig} onDemo={p.onMemDemo} />
+          <ColorPick cfg={p.cfg} onConfig={p.onConfig} />
           <PictureStatus cfg={p.cfg} state={state} power={p.power} />
         </div>
         {/* the choices sit right under the pinned picture: never covering it, always one tap away */}
@@ -56,7 +57,7 @@ export function MobileLayout(p: Props) {
 
       <div className="m-body">
         {p.card}
-        {!learning && <FunctionPicker cfg={p.cfg} onConfig={p.onConfig} compact />}
+        <FunctionPicker cfg={p.cfg} onConfig={p.onConfig} compact />
         {!learning && !p.demoing && <DemoButton cfg={p.cfg} onDemo={p.onDemo} />}
         {!learning && (
           <>

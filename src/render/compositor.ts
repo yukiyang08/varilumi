@@ -19,10 +19,10 @@ const MAX_LAYERS = 4;
  *  through the cone), so a fixed ambient weight drowned their 1% glow in window light. */
 const BASE_FRAC = 0.012;
 /** Mean scene luminance that "all lights on" is normalised to, so every room shows at a similar brightness. */
-const TARGET_LUM = 0.42;
+const TARGET_LUM = 0.28; // was 0.42: full brightness read as washed out, flat walls and ceiling
 /** How far the eye opens up as the room dims: exposure × (full / current)^ADAPT_EXP, at most ADAPT_MAX. */
-const ADAPT_EXP = 0.6;
-const ADAPT_MAX = 20;
+const ADAPT_EXP = 0.69;
+const ADAPT_MAX = 30;
 
 const VS = `
 attribute vec2 p;
@@ -174,7 +174,7 @@ export class Compositor {
 
   /**
    * Eye adaptation: darker scene → open up. Tuned to what a person in the room sees, not to the photometric
-   * ratio: at 1% the eye adapts enough that the room around is still faintly visible (mean L* ≈ 24 vs 58 at
+   * ratio: at 1% the eye adapts enough that the room around is still faintly visible (mean L* ≈ 24 vs 50 at
    * 100%), while each step down still reads darker. Exponent 0.36 / cap 6 matched Stevens' cube-root law
    * exactly but looked near-black on a screen viewed in a lit room.
    */

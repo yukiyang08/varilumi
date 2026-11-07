@@ -1,12 +1,13 @@
-import type { Setup } from '../scenes';
-import type { WizardStep } from './Wizard';
+import { FIXTURES, ROOMS, type FixtureId, type RoomId, type Setup } from '../scenes';
+/** Which choice an in-place picker edits. */
+export type PickKind = 'room' | 'fixture' | 'need';
 
 /**
  * 「客廳・崁燈」— each part reopens just that choice. The function is chosen in one place only:
  * the function buttons under the picture, which are always on screen.
  */
-export function Breadcrumb({ setup, onEdit }: { setup: Setup; onEdit: (s: WizardStep) => void }) {
-  const items: [WizardStep, string, string][] = [
+export function Breadcrumb({ setup, onEdit }: { setup: Setup; onEdit: (s: PickKind) => void }) {
+  const items: [PickKind, string, string][] = [
     ['room', '空間', setup.room.name],
     ['fixture', '燈具', setup.fixture.name],
   ];
@@ -20,5 +21,29 @@ export function Breadcrumb({ setup, onEdit }: { setup: Setup; onEdit: (s: Wizard
         </button>
       ))}
     </nav>
+  );
+}
+
+/** Desktop: every room and fixture laid out as segmented buttons, one click to switch. */
+export function SceneTabs({ room, fixture, onRoom, onFixture }: { room: RoomId; fixture: FixtureId; onRoom: (r: RoomId) => void; onFixture: (f: FixtureId) => void }) {
+  return (
+    <div className="scene-tabs-row">
+      <div className="seg" role="radiogroup" aria-label="空間">
+        <span className="seg-label">空間</span>
+        {ROOMS.map((r) => (
+          <button key={r.id} type="button" role="radio" aria-checked={r.id === room} className={r.id === room ? 'active' : ''} onClick={() => onRoom(r.id)}>
+            {r.name}
+          </button>
+        ))}
+      </div>
+      <div className="seg" role="radiogroup" aria-label="燈具">
+        <span className="seg-label">燈具</span>
+        {FIXTURES.map((f) => (
+          <button key={f.id} type="button" role="radio" aria-checked={f.id === fixture} className={f.id === fixture ? 'active' : ''} onClick={() => onFixture(f.id)}>
+            {f.name}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

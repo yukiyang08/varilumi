@@ -202,16 +202,57 @@ export function PictureStatus({ cfg, state, power }: { cfg: GroupConfig; state: 
 /**
  * 記憶功能 toggle, overlaid on the picture's top-right corner. The 慢切 toast on the picture shows what it does.
  */
-export function MemoryToggle({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void }) {
+export function MemoryToggle({ cfg, onConfig, onDemo }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void; onDemo: () => void }) {
+  const [help, setHelp] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  // a tap anywhere else closes the explanation
+  useEffect(() => {
+    if (!help) return;
+    const close = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setHelp(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [help]);
   return (
-    <button type="button" role="switch" aria-checked={cfg.memory} className={`mem-toggle ${cfg.memory ? 'on' : ''}`} onClick={() => {
-        track('memory_toggle', { on: !cfg.memory });
-        onConfig({ memory: !cfg.memory });
-      }}>
-      記憶功能
-      <span className="mem-knob" aria-hidden="true" />
-      <b>{cfg.memory ? '開' : '關'}</b>
-    </button>
+    <div className="mem-wrap" ref={wrap}>
+      <button type="button" role="switch" aria-checked={cfg.memory} className={`mem-toggle ${cfg.memory ? 'on' : ''}`} onClick={() => {
+          track('memory_toggle', { on: !cfg.memory });
+          onConfig({ memory: !cfg.memory });
+        }}>
+        記憶功能
+        <span className="mem-knob" aria-hidden="true" />
+        <b>{cfg.memory ? '開' : '關'}</b>
+      </button>
+      <button
+        type="button"
+        className="mem-help"
+        aria-label="記憶功能是什麼？"
+        aria-expanded={help}
+        onClick={() => {
+          if (!help) track('memory_help');
+          setHelp(!help);
+        }}
+      >
+        ?
+      </button>
+      {help && (
+        <div className="mem-pop" role="note">
+          <b>記憶功能</b>
+          <p>關燈超過 3 秒再開（慢切），會回到關燈前的亮度。</p>
+          <button
+            type="button"
+            className="mem-pop-demo"
+            onClick={() => {
+              setHelp(false);
+              onDemo();
+            }}
+          >
+            ▶ 看示範
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -326,14 +367,10 @@ export function ControlPanel({ setup, cfg, state, onConfig, onPress, onQuick, on
         </div>
         {!learning && !demoing && onDemo && <DemoButton cfg={cfg} onDemo={onDemo} />}
       </div>
-      {!learning && (
-        <>
-          <div className="panel-block">
-            <h3 className="block-title">選一個功能</h3>
-            <FunctionPicker cfg={cfg} onConfig={onConfig} />
-          </div>
-        </>
-      )}
+      <div className="panel-block">
+        <h3 className="block-title">選一個功能</h3>
+        <FunctionPicker cfg={cfg} onConfig={onConfig} />
+      </div>
     </section>
   );
 }

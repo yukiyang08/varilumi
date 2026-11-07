@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FUNCTIONS, QUICK_MS, SLOW_GAP_MS, kelvinLabel, type FunctionId } from './engine/functions';
-import { SwitchEngine } from './engine/switchEngine';
+import { FUNCTIONS, FUNCTION_ORDER, QUICK_MS, SLOW_GAP_MS, type FunctionId } from './engine/functions';
+import { SwitchEngine, type EngineEvent } from './engine/switchEngine';
 import { colorWeights } from './render/compositor';
-import { getSetup, powerText, type FixtureId, type RoomId } from './scenes';
+import { FIXTURES, ROOMS, getSetup, powerText, type FixtureId, type RoomId } from './scenes';
 import { SceneView } from './components/SceneView';
-import { ColorPick, ControlPanel, MemoryToggle, PictureStatus, eventText, pct, stateLabel, type GroupConfig } from './components/ControlPanel';
+import { ColorPick, ControlPanel, MemoryToggle, PictureStatus, eventText, stateLabel, type GroupConfig } from './components/ControlPanel';
 import { ProductCards, type ProductData } from './components/ProductCards';
-import { CoachCard, DEMOS, QUICK_LESSON, TIPS, memoryDemo, type DemoAction, TUT_DONE, TUT_STEPS, type CoachTarget, type TipId } from './components/Tutorial';
+import { CoachCard, DEMOS, TIPS, memoryDemo, tutSteps, type DemoAction, TUT_DONE, type CoachTarget, type TipId } from './components/Tutorial';
 import { MobileLayout } from './components/MobileLayout';
-import { Wizard, type WizardStep } from './components/Wizard';
-import { Breadcrumb } from './components/Breadcrumb';
+import { Breadcrumb, SceneTabs, type PickKind } from './components/Breadcrumb';
 import type { FingerTap } from './components/WallSwitch';
 import { DemoCaption, SceneToast, type Toast } from './components/SceneToast';
 import { QuickPicker } from './components/QuickPicker';
@@ -21,7 +20,7 @@ import { track } from './track';
 const TUT_KEY = 'varilumi-tutorial-done';
 const TIPS_KEY = 'varilumi-tips-seen';
 /** lit areas during the tutorial: the picture (to see the result), the coach card, the button to press and the wall switch (pressing it works too) */
-const SPOT_TARGETS = ['.picture, .m-picture', '.tutorial', '.coach', '.tw-frame'];
+const SPOT_TARGETS = ['.picture, .m-picture', '.coach', '.tw-frame'];
 const store = {
   get(k: string) {
     try {
@@ -56,23 +55,28 @@ function useIsMobile() {
 const RISE_S = 0.09;
 const FALL_S = 0.06;
 
-export interface Favorite {
-  label: string;
-  functionName: string;
-  seconds: number;
+/**
+ * Where the visitor starts. A link can open a given setup, e.g. ?room=bedroom&fixture=cove&fn=stepless
+ * (the product pages on varilumi.com can deep-link straight to their fixture); anything unknown falls back.
+ */
+function startFromUrl() {
+  const q = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
+  const pick = <T extends string>(v: string | null, ok: readonly T[], fallback: T): T => (v && (ok as readonly string[]).includes(v) ? (v as T) : fallback);
+  return {
+    room: pick(q.get('room'), ROOMS.map((r) => r.id), 'living'),
+    fixture: pick(q.get('fixture'), FIXTURES.map((f) => f.id), 'recessed'),
+    fn: pick(q.get('fn'), FUNCTION_ORDER, 'four-step'),
+  };
 }
-
-type Step = WizardStep | 'try';
+const START = startFromUrl();
 
 export default function App() {
-  const [room, setRoom] = useState<RoomId>('living');
-  const [fixture, setFixture] = useState<FixtureId>('recessed');
+  const [room, setRoom] = useState<RoomId>(START.room);
+  const [fixture, setFixture] = useState<FixtureId>(START.fixture);
   const setup = useMemo(() => getSetup(room, fixture), [room, fixture]);
-  const [step, setStep] = useState<Step>('room');
-  const [single, setSingle] = useState(false); // editing one choice from the breadcrumb
-  const [sheet, setSheet] = useState<WizardStep | null>(null); // in-place picker opened from the breadcrumb
+  const [sheet, setSheet] = useState<PickKind | null>(null); // in-place picker opened from the breadcrumb
 
-  const [cfg, setCfg] = useState<GroupConfig>({ functionId: 'four-step', kelvin: setup.fixture.kelvin, memory: false });
+  const [cfg, setCfg] = useState<GroupConfig>({ functionId: START.fn, kelvin: setup.fixture.kelvin, memory: false });
 
   // one engine for the current room × fixture; a new setup is like installing new lamps, switched on
   const engine = useRef<SwitchEngine>(null as unknown as SwitchEngine);
@@ -84,7 +88,7 @@ export default function App() {
   }
 
   const [productData, setProducts] = useState<ProductData | null>(null);
-  // first visit on this device: ask before teaching; the lesson only starts on a yes
+  // first visit on this device: a welcome popup offers the 快切 / 慢切 lesson (start or skip)
   const [askTut, setAskTut] = useState(() => !store.get(TUT_KEY));
   const [tutStep, setTutStep] = useState<number | null>(null);
   const tutRef = useRef(tutStep);
@@ -92,17 +96,15 @@ export default function App() {
   const [tip, setTip] = useState<TipId | null>(null);
   const tipRef = useRef(tip);
   tipRef.current = tip;
-  const [presses, setPresses] = useState(0);
   const [busy, setBusy] = useState(false);
   const [finger, setFinger] = useState<FingerTap | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef(0);
   const wasFlashing = useRef(false);
 
-  // animation clock + LED soft-start smoothing + usage tracking
+  // animation clock + LED soft-start smoothing
   const [now, setNow] = useState(() => performance.now());
   const shown = useRef<{ level: number; mired: number } | null>(null);
-  const usage = useRef<Record<string, { ms: number; label: string; fn: string }>>({});
   const lastT = useRef(performance.now());
 
   useEffect(() => {
@@ -125,14 +127,6 @@ export default function App() {
       cur.level += (target.level - cur.level) * (1 - Math.exp(-dt / tau));
       // colour changes only while lit; snap when dark so the next turn-on starts at the right colour
       cur.mired = cur.level < 0.002 ? target.mired : cur.mired + (target.mired - cur.mired) * (1 - Math.exp(-dt / RISE_S));
-      // usage: time spent at each setting (ignores ramps and darkness)
-      if (s.switchOn && s.level > 0 && !s.ramping) {
-        const def = FUNCTIONS[e.options.functionId];
-        const label = `${kelvinLabel(s.kelvin)} ${pct(s.level)}%`;
-        const key = `${engineKey.current}|${def.id}|${label}`;
-        const u = (usage.current[key] ??= { ms: 0, label, fn: def.name });
-        u.ms += dt * 1000;
-      }
       setNow(t);
       raf = requestAnimationFrame(loop);
     };
@@ -147,16 +141,15 @@ export default function App() {
       .catch(() => setProducts(null));
   }, []);
 
-  const advanceTutorial = useCallback((ev: string | null) => {
+  const advanceTutorial = useCallback((ev: EngineEvent) => {
     setTutStep((s) => {
-      if (s === null || s >= TUT_STEPS.length) return s;
-      if (s === 0 && (ev === 'step' || ev === 'ramp-start' || ev === 'ramp-stop')) return 1;
-      if (s === 1 && (ev === 'slow-default' || ev === 'slow-memory')) {
+      const steps = tutSteps(engine.current.options.functionId);
+      if (s === null || s >= steps.length || !ev || !steps[s].doneOn.includes(ev)) return s;
+      if (s + 1 === steps.length) {
         store.set(TUT_KEY, '1');
         track('tutorial_complete');
-        return 2;
       }
-      return s;
+      return s + 1;
     });
   }, []);
 
@@ -168,7 +161,7 @@ export default function App() {
     switchFeedback(st.switchOn);
     advanceTutorial(st.event);
     // first lesson: show what the 快切 did, right on the picture
-    if (tutRef.current === 0 && (st.event === 'step' || st.event === 'ramp-start')) {
+    if (tutRef.current !== null && (st.event === 'step' || st.event === 'ramp-start')) {
       const label = st.event === 'step' ? stateLabel(e.options.functionId, st) : '從夜燈開始慢慢變亮';
       setToast({ key: t, kind: 'quick', memory: false, label });
       clearTimeout(toastTimer.current);
@@ -176,7 +169,6 @@ export default function App() {
     }
     const tp = tipRef.current;
     if (tp && st.event && TIPS[tp]?.doneOn.includes(st.event)) setTip(null);
-    setPresses((n) => n + 1);
     if (st.event === 'slow-memory' || st.event === 'slow-default') {
       const label = stateLabel(e.options.functionId, st);
       setToast({ key: t, kind: 'slow', memory: st.event === 'slow-memory', label });
@@ -290,11 +282,11 @@ export default function App() {
   };
   useEffect(() => stopDemo(), [setup.key, stopDemo]);
   useEffect(() => {
-    if (step === 'try') track('scene_view', { room, fixture });
-  }, [step, room, fixture]);
+    track('scene_view', { room, fixture });
+  }, [room, fixture]);
   useEffect(() => {
-    if (step === 'try') track('function_view', { function: cfg.functionId });
-  }, [step, cfg.functionId]);
+    track('function_view', { function: cfg.functionId });
+  }, [cfg.functionId]);
 
   const configure = useCallback((patch: Partial<GroupConfig>) => {
     const e = engine.current;
@@ -306,31 +298,8 @@ export default function App() {
     setCfg((c) => ({ ...c, ...patch }));
   }, []);
 
-  // ---- picker flow
-  const next = (from: WizardStep) => {
-    if (single) {
-      setSingle(false);
-      setStep('try');
-      return;
-    }
-    setStep(from === 'room' ? 'fixture' : from === 'fixture' ? 'need' : 'try');
-  };
-  const pickRoom = (r: RoomId) => {
-    setRoom(r);
-    next('room');
-  };
-  const pickFixture = (f: FixtureId) => {
-    setFixture(f);
-    const k = getSetup(room, f).fixture.kelvin;
-    setCfg((c) => ({ ...c, kelvin: k }));
-    engineKey.current = ''; // rebuild the engine with the fixture's default colour
-    next('fixture');
-  };
-  const pickNeed = (fn: FunctionId) => {
-    configure({ functionId: fn });
-    next('need');
-  };
-  const editStep = (s: WizardStep) => setSheet(s);
+  // ---- room / fixture / function pickers
+  const editStep = (s: PickKind) => setSheet(s);
   // in-place changes from the simulator: apply immediately, keep the page where it is
   const quickRoom = (r: RoomId) => {
     setRoom(r);
@@ -348,12 +317,6 @@ export default function App() {
     configure({ functionId: fn });
     setSheet(null);
   };
-  const back = () => {
-    if (single || step === 'room') {
-      setSingle(false);
-      setStep('try');
-    } else setStep(step === 'need' ? 'fixture' : 'room');
-  };
 
   // ---- derived view state
   const state = engine.current.state(now);
@@ -367,21 +330,12 @@ export default function App() {
   const power = powerText(setup, state.level);
   const isMobile = useIsMobile();
 
-  // recommendation once the visitor has played a little
-  const favorite: Favorite | null = useMemo(() => {
-    if (presses < 4) return null;
-    const mine = Object.entries(usage.current).filter(([k]) => k.startsWith(`${setup.key}|${cfg.functionId}|`));
-    if (!mine.length) return null;
-    const [, best] = mine.sort((a, b) => b[1].ms - a[1].ms)[0];
-    return best.ms > 3000 ? { label: best.label, functionName: best.fn, seconds: Math.round(best.ms / 1000) } : null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presses, setup.key, cfg.functionId, Math.floor(now / 2000)]);
-
-  const learning = tutStep !== null && tutStep < TUT_STEPS.length;
+  const lesson = tutSteps(cfg.functionId);
+  const learning = tutStep !== null && tutStep < lesson.length;
 
   // one-time tips: the first time a visitor meets a function, or turns 記憶功能 on
   useEffect(() => {
-    if (learning || step !== 'try' || demo) return;
+    if (learning || demo) return;
     let seen: string[] = [];
     try {
       seen = JSON.parse(store.get(TIPS_KEY) ?? '[]');
@@ -399,17 +353,17 @@ export default function App() {
     }
     const t = setTimeout(() => void runDemo(), 500);
     return () => clearTimeout(t);
-  }, [learning, step, cfg.functionId, cfg.memory, runDemo, demo]);
+  }, [learning, cfg.functionId, cfg.memory, runDemo, demo]);
 
   // end of the 快切 / 慢切 lesson: show 記憶功能 side by side, then the "學會了" card
   const memLesson = useRef(false);
   useEffect(() => {
     if (tutStep === 0) memLesson.current = false;
-    if (tutStep !== TUT_STEPS.length || memLesson.current) return;
+    if (tutStep !== lesson.length || memLesson.current) return;
     memLesson.current = true;
     const t = setTimeout(() => {
       store.set(TIPS_KEY, JSON.stringify([...new Set([...JSON.parse(store.get(TIPS_KEY) ?? '[]'), 'memory'])]));
-      void runDemo(memoryDemo(engine.current.options.functionId), () => setTutStep(TUT_STEPS.length));
+      void runDemo(memoryDemo(engine.current.options.functionId), () => setTutStep(lesson.length));
     }, 900);
     return () => clearTimeout(t);
   }, [tutStep, runDemo]);
@@ -419,28 +373,41 @@ export default function App() {
     setTip((t) => (t && t !== 'memory' && t !== cfg.functionId ? null : t));
   }, [cfg.functionId, stopDemo]);
 
-  const askDialog =
-    step === 'try' && askTut ? (
-      <TutorialAsk
-        onYes={() => {
-          track('tutorial_answer', { answer: 'yes' });
-          setAskTut(false);
-          setTutStep(0);
-        }}
-        onNo={() => {
-          track('tutorial_answer', { answer: 'no' });
-          store.set(TUT_KEY, '1');
-          setAskTut(false);
-        }}
-      />
-    ) : null;
+  const memDemo = () => void runDemo(memoryDemo(cfg.functionId), () => undefined);
+  const askDialog = askTut ? (
+    <TutorialAsk
+      onYes={() => {
+        track('tutorial_answer', { answer: 'yes' });
+        setAskTut(false);
+        setTutStep(0);
+      }}
+      onNo={() => {
+        track('tutorial_answer', { answer: 'no' });
+        store.set(TUT_KEY, '1');
+        setAskTut(false);
+      }}
+    />
+  ) : null;
   const demoCaption = demo ? <DemoCaption text={demo} onStop={stopDemo} /> : null;
-  const coach: CoachTarget | null = learning ? TUT_STEPS[tutStep!].coach : tip && !demo ? TIPS[tip]!.coach : null;
+  const spot = learning ? ['.tutorial', ...(lesson[tutStep!].targets ?? SPOT_TARGETS)] : [];
+  // bring what the spotlight shows into view (the function list can be below the fold)
+  useEffect(() => {
+    if (!learning) return;
+    const sel = lesson[tutStep!].targets?.[0];
+    const el = sel ? document.querySelector(sel) : null;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutStep, learning]);
+  const coach: CoachTarget | null = learning ? lesson[tutStep!].coach ?? null : tip && !demo ? TIPS[tip]!.coach : null;
   const card = learning ? (
     <CoachCard
-      text={tutStep === 0 ? QUICK_LESSON[cfg.functionId] : TUT_STEPS[tutStep!].title}
-      dots={[tutStep!, TUT_STEPS.length]}
-      closeLabel="略過"
+      intro={`${FUNCTIONS[cfg.functionId].plainName}・${FUNCTIONS[cfg.functionId].family}：${
+        FUNCTIONS[cfg.functionId].family === '調光型' ? '只調亮度，光色固定' : '亮度和光色都能換'
+      }`}
+      text={lesson[tutStep!].title}
+      onNext={lesson[tutStep!].targets ? () => setTutStep((s) => (s === null ? s : s + 1)) : undefined}
+      dots={[tutStep!, lesson.length]}
+      closeLabel="跳過教學"
       onClose={() => {
         track('tutorial_skip', { step: tutStep! + 1 });
         store.set(TUT_KEY, '1');
@@ -456,7 +423,11 @@ export default function App() {
   const crumbs = (
     <div className="crumbs-wrap">
       <div className="crumbs-row">
-        <Breadcrumb setup={setup} onEdit={editStep} />
+        {isMobile ? (
+          <Breadcrumb setup={setup} onEdit={editStep} />
+        ) : (
+          <SceneTabs room={room} fixture={fixture} onRoom={quickRoom} onFixture={quickFixture} />
+        )}
         <button
           type="button"
           className="link help"
@@ -484,7 +455,7 @@ export default function App() {
     </div>
   );
   const products = (
-    <ProductCards data={productData} fixture={fixture} fixtureName={setup.fixture.name} functionId={cfg.functionId} favorite={favorite} />
+    <ProductCards data={productData} fixture={fixture} fixtureName={setup.fixture.name} functionId={cfg.functionId} />
   );
   const footer = (
     <footer className="foot">
@@ -499,37 +470,10 @@ export default function App() {
     </footer>
   );
 
-  if (step !== 'try') {
-    return (
-      <div className={`app ${isMobile ? 'is-mobile' : ''} wizard-page`}>
-        {!isMobile && step === 'room' && !single && (
-          <div className="hero">
-            <h1>
-              不用換開關，<span className="grad">按一下就能調光調色</span>
-            </h1>
-            <p>選一個空間和燈具，親手按按看飛利明的開關調光。</p>
-          </div>
-        )}
-        <Wizard
-          step={step}
-          room={room}
-          fixture={fixture}
-          functionId={cfg.functionId}
-          single={single}
-          onRoom={pickRoom}
-          onFixture={pickFixture}
-          onNeed={pickNeed}
-          onBack={back}
-          onSkip={() => setStep('try')}
-        />
-      </div>
-    );
-  }
-
   if (isMobile) {
     return (
       <div className="app is-mobile">
-        {learning && <Spotlight targets={SPOT_TARGETS} />}
+        {learning && <Spotlight targets={spot} />}
         {askDialog}
         <MobileLayout
           setup={setup}
@@ -549,6 +493,7 @@ export default function App() {
           crumbs={crumbs}
           card={card}
           demoCaption={demoCaption}
+          onMemDemo={memDemo}
           learning={learning}
           coach={coach}
           after={
@@ -564,7 +509,7 @@ export default function App() {
 
   return (
     <div className="app">
-      {learning && <Spotlight targets={SPOT_TARGETS} />}
+      {learning && <Spotlight targets={spot} />}
       {askDialog}
       {crumbs}
       <main className="layout">
@@ -572,8 +517,8 @@ export default function App() {
           <div className="picture">
             <SceneView setup={setup} weights={weights} />
             {demoCaption ?? <SceneToast toast={toast} />}
-            {!learning && <MemoryToggle cfg={cfg} onConfig={configure} />}
-            {!learning && <ColorPick cfg={cfg} onConfig={configure} />}
+            <MemoryToggle cfg={cfg} onConfig={configure} onDemo={memDemo} />
+            <ColorPick cfg={cfg} onConfig={configure} />
             <PictureStatus cfg={cfg} state={state} power={power} />
           </div>
           <p className="disclaimer">3D 模擬畫面：{setup.detail}。實際光色與亮度依空間而異。</p>

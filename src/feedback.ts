@@ -11,16 +11,23 @@ function audio(): AudioContext {
 }
 
 /**
- * Browsers only let audio start inside a real tap. The 快切 / 慢切 buttons flip the switch a moment later
- * from a timer, so they call this in their click handler; otherwise the first "off" click is swallowed.
+ * Browsers only let audio start inside a real tap. Called from every tap on the page (below) and from the
+ * 快切 / 慢切 click handlers, whose switch presses come a moment later from a timer. Also wakes the context
+ * after iOS interrupts it (state "interrupted", e.g. after switching apps).
  */
 export function unlockAudio() {
   try {
     const c = audio();
-    if (c.state === 'suspended') void c.resume();
+    if (c.state !== 'running') void c.resume();
   } catch {
     /* audio unavailable */
   }
+}
+
+// The wall switch reacts on pointerdown for speed, but iOS doesn't count a touch-down as a tap, so a visitor
+// whose first touch is the switch would never get sound. Unlock on whatever counts as a tap, anywhere.
+if (typeof document !== 'undefined') {
+  for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) document.addEventListener(ev, unlockAudio, { capture: true, passive: true });
 }
 
 export function switchFeedback(on: boolean) {
@@ -33,7 +40,7 @@ export function switchFeedback(on: boolean) {
   try {
     const c = audio();
     // still waking up: play once it is running instead of scheduling into a frozen clock
-    if (c.state === 'suspended') c.resume().then(() => click(c, on), () => undefined);
+    if (c.state !== 'running') c.resume().then(() => click(c, on), () => undefined);
     else click(c, on);
   } catch {
     /* audio unavailable */

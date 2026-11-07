@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom';
 import { FUNCTIONS, FUNCTION_ORDER, type FunctionId } from '../engine/functions';
 import { FIXTURES, ROOMS, type FixtureId, type RoomId } from '../scenes';
 import { FnAnim } from './FnAnim';
-import type { WizardStep } from './Wizard';
+import type { PickKind } from './Breadcrumb';
 
 interface Props {
-  kind: WizardStep;
+  kind: PickKind;
   room: RoomId;
   fixture: FixtureId;
   functionId: FunctionId;
@@ -19,7 +19,7 @@ interface Props {
 }
 
 const THUMB = `${import.meta.env.BASE_URL}thumbs`;
-const TITLE: Record<WizardStep, string> = { room: '換一個空間', fixture: '換一種燈', need: '換一個功能' };
+const TITLE: Record<PickKind, string> = { room: '換一個空間', fixture: '換一種燈', need: '換一個功能' };
 
 /**
  * Change one choice without leaving the simulator: a bottom sheet on phones, a panel under the
