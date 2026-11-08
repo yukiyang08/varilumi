@@ -396,9 +396,14 @@ export default function App() {
     if (!learning) return;
     const sel = lesson[tutStep!].targets?.[0];
     const el = sel ? appRoot.querySelector(sel) : null;
-    const r = el?.getBoundingClientRect();
-    // only when it is actually off-screen, so the coach card stays in view
-    if (r && (r.top > innerHeight - 80 || r.bottom < 0)) el!.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!el) return;
+    // visible area = between the sticky picture (phones) and the fixed switch dock (phones) / the screen edges.
+    // Scroll only as far as needed, so the coach card above the target stays in view too.
+    const r = el.getBoundingClientRect();
+    const top = appRoot.querySelector('.m-stage')?.getBoundingClientRect().bottom ?? 0;
+    const bottom = appRoot.querySelector('.m-dock')?.getBoundingClientRect().top ?? innerHeight;
+    const dy = r.bottom > bottom - 12 ? r.bottom - bottom + 24 : r.top < top ? r.top - top - 24 : 0;
+    if (dy && !el.closest('.m-stage')) scrollBy({ top: dy, behavior: 'smooth' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutStep, learning]);
   const coach: CoachTarget | null = learning ? lesson[tutStep!].coach ?? null : tip && !demo ? TIPS[tip]!.coach : null;
