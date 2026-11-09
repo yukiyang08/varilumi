@@ -391,11 +391,13 @@ export default function App() {
   ) : null;
   const demoCaption = demo ? <DemoCaption text={demo} onStop={stopDemo} /> : null;
   const spot = learning ? ['.tutorial', ...(lesson[tutStep!].targets ?? SPOT_TARGETS)] : [];
-  // bring what the spotlight shows into view (the function list can be below the fold)
+  // bring what the step shows into view (the function list can be below the fold); when that is the pinned
+  // picture or a button, bring the coach card instead: on short phones it otherwise sits under the switch dock
   useEffect(() => {
     if (!learning) return;
     const sel = lesson[tutStep!].targets?.[0];
-    const el = sel ? appRoot.querySelector(sel) : null;
+    const target = sel ? appRoot.querySelector(sel) : null;
+    const el = target && !target.closest('.m-stage') ? target : appRoot.querySelector('.tutorial');
     if (!el) return;
     // visible area = between the sticky picture (phones) and the fixed switch dock (phones) / the screen edges.
     // Scroll only as far as needed, so the coach card above the target stays in view too.
@@ -403,7 +405,7 @@ export default function App() {
     const top = appRoot.querySelector('.m-stage')?.getBoundingClientRect().bottom ?? 0;
     const bottom = appRoot.querySelector('.m-dock')?.getBoundingClientRect().top ?? innerHeight;
     const dy = r.bottom > bottom - 12 ? r.bottom - bottom + 24 : r.top < top ? r.top - top - 24 : 0;
-    if (dy && !el.closest('.m-stage')) scrollBy({ top: dy, behavior: 'smooth' });
+    if (dy) scrollBy({ top: dy, behavior: 'smooth' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutStep, learning]);
   // Phones: no dark overlay (its holes, measured from screen coordinates, drifted with the sticky picture, the
@@ -416,6 +418,11 @@ export default function App() {
     return () => els.forEach((e) => e.removeAttribute('data-spot'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, learning, tutStep]);
+  const skipTutorial = () => {
+    track('tutorial_skip', { step: tutStep! + 1 });
+    store.set(TUT_KEY, '1');
+    setTutStep(null);
+  };
   const coach: CoachTarget | null = learning ? lesson[tutStep!].coach ?? null : tip && !demo ? TIPS[tip]!.coach : null;
   const card = learning ? (
     <CoachCard
@@ -426,11 +433,7 @@ export default function App() {
       onNext={lesson[tutStep!].targets ? () => setTutStep((s) => (s === null ? s : s + 1)) : undefined}
       dots={[tutStep!, lesson.length]}
       closeLabel="跳過教學"
-      onClose={() => {
-        track('tutorial_skip', { step: tutStep! + 1 });
-        store.set(TUT_KEY, '1');
-        setTutStep(null);
-      }}
+      onClose={skipTutorial}
     />
   ) : tutStep !== null ? (
     <CoachCard text={TUT_DONE} done closeLabel="關閉" onClose={() => setTutStep(null)} />
@@ -457,11 +460,12 @@ export default function App() {
           type="button"
           className="link help"
           onClick={() => {
+            if (learning) return skipTutorial(); // this bar stays on screen, so the lesson can always be ended here
             stopDemo();
             setTutStep(0);
           }}
         >
-          ？教學
+          {learning ? '結束教學' : '？教學'}
         </button>
       </div>
       {sheet && (
