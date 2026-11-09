@@ -41,7 +41,7 @@ export const ProductCards = memo(function ProductCards({ data, fixture, fixtureN
         </a>
       </div>
       <p className="products-sub">支援「{fn.name}」的飛利明{fixtureName}</p>
-      <p className="products-note">下單時在「{fn.family === '調光型' ? '調光功能' : '功能'}」選「{fn.name}」，需要的話再勾選「加記憶功能」。多為訂製品，請先確認尺寸。</p>
+      <p className="products-note">下單時在「{fn.family === '調光型' ? '調光功能' : '功能'}」選「{fn.name}」，需要的話再勾選「加記憶功能」。</p>
       <div className="product-row" id="product-row">
         {list.map((p) => (
           <a

@@ -19,7 +19,7 @@ export function TutorialAsk({ onYes, onNo }: { onYes: () => void; onNo: () => vo
         onNo();
       }}
     >
-      <h2 id="tut-ask-title">歡迎來到開關調光體驗室</h2>
+      <h2 id="tut-ask-title">歡迎來到飛利明 開關調光體驗館</h2>
       <p>花 20 秒學會「快切」和「慢切」，就知道怎麼用開關調光。</p>
       <div className="tut-ask-actions">
         <button type="button" className="tut-ask-no" onClick={onNo}>

@@ -406,6 +406,16 @@ export default function App() {
     if (dy && !el.closest('.m-stage')) scrollBy({ top: dy, behavior: 'smooth' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutStep, learning]);
+  // Phones: no dark overlay (its holes, measured from screen coordinates, drifted with the sticky picture, the
+  // dock and the browser bars). The tour's targets get a glowing ring on themselves instead, so it can't drift;
+  // the hands-on steps already pulse their button (.coach). React never sets data-spot, so re-renders keep it.
+  useEffect(() => {
+    if (!isMobile || !learning) return;
+    const els = (lesson[tutStep!].targets ?? []).flatMap((s) => [...appRoot.querySelectorAll(s)]);
+    els.forEach((e) => e.setAttribute('data-spot', ''));
+    return () => els.forEach((e) => e.removeAttribute('data-spot'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, learning, tutStep]);
   const coach: CoachTarget | null = learning ? lesson[tutStep!].coach ?? null : tip && !demo ? TIPS[tip]!.coach : null;
   const card = learning ? (
     <CoachCard
@@ -430,8 +440,8 @@ export default function App() {
 
   const title = (
     <header className="lab-title">
-      <h1>開關調光體驗室</h1>
-      <p>飛利明 VariLumi 親自體驗，找到最適合你的燈光功能</p>
+      <h1>飛利明 開關調光體驗館</h1>
+      <p>親自體驗，找到最適合你的燈光功能</p>
     </header>
   );
 
@@ -488,7 +498,6 @@ export default function App() {
   if (isMobile) {
     return (
       <div className="app is-mobile">
-        {learning && <Spotlight targets={spot} />}
         {askDialog}
         {title}
         <MobileLayout

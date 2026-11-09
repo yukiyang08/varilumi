@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: 開關調光體驗室 Varilumi Lab
- * Description: 在頁面中放入開關調光體驗室。用法：[varilumi_lab]，體驗室直接畫在頁面裡、跟著網站一起捲動。若佈景主題有衝突，可改用 mode="iframe"（鋪滿頁首以下、體驗室自己捲動，可加 offset="頁首高度(px)"）。體驗室裡的操作會以 lab_ 開頭的事件送進網站的 GA。
+ * Plugin Name: 飛利明 開關調光體驗館 Varilumi Lab
+ * Description: 在頁面中放入飛利明 開關調光體驗館。用法：[varilumi_lab]，體驗室直接畫在頁面裡、跟著網站一起捲動。若佈景主題有衝突，可改用 mode="iframe"（鋪滿頁首以下、體驗室自己捲動，可加 offset="頁首高度(px)"）。體驗室裡的操作會以 lab_ 開頭的事件送進網站的 GA。
  * Version: 1.3.0
  * Author: 飛利明 VariLumi
  */
@@ -30,7 +30,7 @@ add_shortcode('varilumi_lab', function ($atts) {
         // The header height is measured (admin bar + first <header>) unless offset="" is given.
         $html = sprintf(
             '<style>html,body{overflow:hidden!important;height:100%%}</style>'
-            . '<iframe id="varilumi-lab" src="%s" title="開關調光體驗室" allow="vibrate" style="position:fixed;left:0;right:0;bottom:0;top:%dpx;width:100%%;height:auto;border:0;z-index:1;background:#fff"></iframe>',
+            . '<iframe id="varilumi-lab" src="%s" title="飛利明 開關調光體驗館" allow="vibrate" style="position:fixed;left:0;right:0;bottom:0;top:%dpx;width:100%%;height:auto;border:0;z-index:1;background:#fff"></iframe>',
             esc_url($a['src']),
             max(0, intval($a['offset']))
         );
