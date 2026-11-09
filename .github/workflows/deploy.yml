@@ -1,11 +1,10 @@
-# Every push to the default branch: test, build, publish to GitHub Pages.
+# Every push to main: test, build, publish to GitHub Pages.
+# The github-pages environment must allow main (Settings → Environments → github-pages).
 name: Deploy
 
 on:
   push:
-    # Pages only accepts deploys from the repo's default branch; listing both keeps it working while the
-    # default is moved from claude/switch-lab-v1 to main.
-    branches: [main, claude/switch-lab-v1]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
