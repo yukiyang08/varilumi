@@ -431,7 +431,7 @@ export default function App() {
   const title = (
     <header className="lab-title">
       <h1>開關調光體驗室</h1>
-      <p>不用換開關，按一下就能調光調色</p>
+      <p>飛利明 VariLumi 親自體驗，找到最適合你的燈光功能</p>
     </header>
   );
 
