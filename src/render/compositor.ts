@@ -87,6 +87,8 @@ export class Compositor {
   private targetExposure = 1;
   private raf = 0;
   private last = 0;
+  private dirty = true;
+  private drawnAt = 0;
   private uni: Record<string, WebGLUniformLocation | null> = {};
   ready = false;
 
@@ -158,6 +160,7 @@ export class Compositor {
     this.targetExposure = this.computeExposure();
     this.exposure = this.targetExposure;
     this.ready = true;
+    this.dirty = true;
     this.draw(performance.now());
   }
 
@@ -165,11 +168,13 @@ export class Compositor {
   setWeights(w: Record<string, number>): void {
     this.weights = [0, 1, 2, 3].map((i) => Math.max(0, w[this.names[i]] ?? 0));
     this.targetExposure = this.computeExposure();
+    this.dirty = true;
   }
 
   /** Jump straight to the adapted exposure (e.g. right after a scene loads). */
   snapExposure(): void {
     this.exposure = this.targetExposure;
+    this.dirty = true;
   }
 
   /**
@@ -227,12 +232,19 @@ export class Compositor {
     // adaptation: brightening is fast (pupil closes), darkening is slower
     const tau = this.targetExposure > this.exposure ? 0.9 : 0.25;
     this.exposure += (this.targetExposure - this.exposure) * (1 - Math.exp(-dt / tau));
+    const adapting = Math.abs(this.targetExposure - this.exposure) > this.targetExposure * 1e-4;
+    const grain = Math.min(Math.max((this.exposure / this.normExposure() - 1.4) * 0.012, 0), 0.03);
+    // A steady picture is not redrawn (a full-screen 9-tap shader 60×/s heats phones); the dark-room grain
+    // still moves, at ~20 fps, which reads as film grain rather than a frozen pattern.
+    if (!this.dirty && !adapting && (grain === 0 || t - this.drawnAt < 50)) return;
+    this.dirty = false;
+    this.drawnAt = t;
     const gl = this.gl;
     gl.useProgram(this.prog);
     this.weights.forEach((w, i) => gl.uniform1f(this.uni[`uW${i}`], w));
     gl.uniform1f(this.uni.uExposure, this.exposure);
     gl.uniform1f(this.uni.uBaseW, this.baseW);
-    gl.uniform1f(this.uni.uGrain, Math.min(Math.max((this.exposure / this.normExposure() - 1.4) * 0.012, 0), 0.03));
+    gl.uniform1f(this.uni.uGrain, grain);
     gl.uniform1f(this.uni.uTime, (t / 1000) % 100);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }

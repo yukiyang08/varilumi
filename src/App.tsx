@@ -104,9 +104,10 @@ export default function App() {
   const wasFlashing = useRef(false);
 
   // animation clock + LED soft-start smoothing
-  const [now, setNow] = useState(() => performance.now());
+  const [, setNow] = useState(() => performance.now());
   const shown = useRef<{ level: number; mired: number } | null>(null);
   const lastT = useRef(performance.now());
+  const lastSig = useRef('');
 
   useEffect(() => {
     let raf = 0;
@@ -128,7 +129,16 @@ export default function App() {
       cur.level += (target.level - cur.level) * (1 - Math.exp(-dt / tau));
       // colour changes only while lit; snap when dark so the next turn-on starts at the right colour
       cur.mired = cur.level < 0.002 ? target.mired : cur.mired + (target.mired - cur.mired) * (1 - Math.exp(-dt / RISE_S));
-      setNow(t);
+      // Re-render only when something on screen would change (the whole app re-rendering 60×/s drained phones).
+      // The 快切 countdown and a ramp change every frame; a steady light changes nothing, so the app sits idle.
+      const sig = [
+        s.switchOn, s.event, s.flashing, s.stepIndex, s.colorIndex, s.nextColorIndex, s.ramping && s.rampProgress,
+        s.offFor !== null && s.offFor < QUICK_MS ? s.offFor : s.offFor !== null, cur.level.toFixed(4), cur.mired.toFixed(1),
+      ].join('|');
+      if (sig !== lastSig.current) {
+        lastSig.current = sig;
+        setNow(t);
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -320,7 +330,8 @@ export default function App() {
   };
 
   // ---- derived view state
-  const state = engine.current.state(now);
+  // the frame loop re-renders only on visible change, so read the clock here rather than its last tick
+  const state = engine.current.state(performance.now());
   const sh = shown.current ?? { level: state.level, mired: 1e6 / state.kelvin };
   const weightKey = `${setup.key}:${sh.level.toFixed(4)}:${sh.mired.toFixed(1)}`;
   const weights = useMemo(() => {
