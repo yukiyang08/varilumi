@@ -32,6 +32,17 @@ export function Spotlight({ targets }: { targets: string[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
+  // Phones: a finger scroll moved the page under the pinned overlay (the holes lagged and the lesson could be
+  // scrolled away into a dark screen). Each step scrolls its target into view itself, so touch scrolling
+  // pauses while the spotlight is on. Taps still work; 跳過教學 ends it.
+  useEffect(() => {
+    const stop = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    document.addEventListener('touchmove', stop, { passive: false });
+    return () => document.removeEventListener('touchmove', stop);
+  }, []);
+
   return (
     <svg className="spotlight" aria-hidden="true">
       <defs>

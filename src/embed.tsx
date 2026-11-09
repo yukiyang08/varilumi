@@ -39,10 +39,37 @@ if (host && !host.shadowRoot) {
     }
     host.style.setProperty('--vl-top', `${Math.round(top)}px`);
   };
+  // The site's floating buttons (e.g. the LINE chat bubble, bottom-right) would cover the phone switch dock
+  // (快切 sits there): lift any small fixed element that overlaps the dock to just above it.
+  const lifted = new Map<HTMLElement, string>(); // element → its own inline transform
+  const liftOverDock = () => {
+    const dock = shadow.querySelector('.m-dock')?.getBoundingClientRect();
+    if (!dock) {
+      lifted.forEach((t, el) => (el.style.transform = t));
+      lifted.clear();
+      return;
+    }
+    const y = dock.top + dock.height / 2;
+    for (const x of [24, innerWidth / 2, innerWidth - 24]) {
+      for (const hit of document.elementsFromPoint(x, y)) {
+        if (hit === host || host.contains(hit)) continue;
+        let e = hit as HTMLElement | null;
+        while (e && e !== document.body && getComputedStyle(e).position !== 'fixed') e = e.parentElement;
+        // ponytail: only small floating things; a full-width bottom bar of the theme is left alone
+        if (e && e !== document.body && !lifted.has(e) && e.getBoundingClientRect().width < innerWidth / 2) lifted.set(e, e.style.transform);
+      }
+    }
+    lifted.forEach((t, el) => {
+      el.style.transform = t; // measure where it sits on its own
+      const dy = el.getBoundingClientRect().bottom - dock.top + 8;
+      el.style.transform = dy > 0 ? `${t} translateY(${-dy}px)` : t;
+    });
+  };
   let raf = 0;
-  const queue = () => (raf ||= requestAnimationFrame(() => ((raf = 0), fitTop())));
+  const queue = () => (raf ||= requestAnimationFrame(() => ((raf = 0), fitTop(), liftOverDock())));
   addEventListener('scroll', queue, { passive: true });
   addEventListener('resize', queue);
+  setInterval(queue, 1500); // chat widgets load late
   fitTop();
 
   createRoot(mount).render(

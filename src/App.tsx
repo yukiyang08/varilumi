@@ -428,6 +428,13 @@ export default function App() {
     <CoachCard text={TIPS[tip]!.text} closeLabel="知道了" onClose={() => setTip(null)} />
   ) : null;
 
+  const title = (
+    <header className="lab-title">
+      <h1>開關調光體驗室</h1>
+      <p>不用換開關，按一下就能調光調色</p>
+    </header>
+  );
+
   const crumbs = (
     <div className="crumbs-wrap">
       <div className="crumbs-row">
@@ -483,6 +490,7 @@ export default function App() {
       <div className="app is-mobile">
         {learning && <Spotlight targets={spot} />}
         {askDialog}
+        {title}
         <MobileLayout
           setup={setup}
           state={state}
@@ -519,6 +527,7 @@ export default function App() {
     <div className="app">
       {learning && <Spotlight targets={spot} />}
       {askDialog}
+      {title}
       {crumbs}
       <main className="layout">
         <div className="stage">
