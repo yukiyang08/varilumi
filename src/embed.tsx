@@ -7,10 +7,15 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import css from './styles.css?inline';
-import { setAppRoot } from './root';
+import { setAppRoot, setWp } from './root';
 
 const host = document.getElementById('varilumi-lab');
 if (host && !host.shadowRoot) {
+  try {
+    if (host.dataset.wp) setWp(JSON.parse(host.dataset.wp));
+  } catch {
+    /* old plugin without the survey */
+  }
   const shadow = host.attachShadow({ mode: 'open' });
   setAppRoot(shadow);
   const style = document.createElement('style');

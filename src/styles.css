@@ -716,3 +716,57 @@ a { color: var(--brand-ink); }
 .is-mobile .lab-title { padding: 12px 0 10px; }
 .is-mobile .lab-title h1 { font-size: 19px; }
 .is-mobile .lab-title p { font-size: 12.5px; }
+
+/* 體驗好禮: survey card above the products, and the survey dialog */
+.survey-card {
+  margin-top: 24px; padding: 14px 16px; border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.survey-card > div { min-width: 0; flex: 1; }
+.survey-card.ready { background: linear-gradient(100deg, #fff6dc, #ffe9d6); border-color: #f6d39a; }
+.survey-card b { font-size: 15.5px; }
+.survey-card p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.survey-meter { margin-top: 8px; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.survey-meter i { display: block; height: 100%; background: var(--grad); border-radius: inherit; transition: width 0.3s; }
+.survey-go { flex: none; border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; color: #fff; background: var(--brand-2); }
+.survey-code { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.survey-code code {
+  font: 700 19px/1.2 ui-monospace, 'SFMono-Regular', Menlo, monospace; letter-spacing: 0.08em;
+  padding: 6px 12px; border: 2px dashed var(--brand-2); border-radius: 10px; background: #fff; color: var(--brand-ink);
+}
+.survey-code button { border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; background: #fff; font-size: 13.5px; }
+@media (max-width: 480px) { .survey-card { flex-direction: column; align-items: stretch; } .survey-go { width: 100%; } }
+
+.survey {
+  width: min(520px, calc(100% - 24px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; border-radius: 20px;
+  background: var(--bg); color: var(--ink); box-shadow: 0 20px 50px rgba(30, 20, 8, 0.3); overflow: auto;
+}
+.survey::backdrop { background: rgba(18, 14, 10, 0.55); }
+.survey[open] { animation: pop 0.25s ease-out; }
+.survey form { padding: 22px 20px 0; }
+.survey h2 { margin: 0; font-size: 20px; }
+.survey-sub { margin: 4px 0 14px; color: var(--muted); font-size: 14px; }
+.survey fieldset { border: 0; padding: 0; margin: 0 0 16px; min-width: 0; }
+.survey legend { padding: 0; margin-bottom: 8px; font-weight: 700; font-size: 15px; }
+.survey-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.survey-opts label {
+  display: inline-flex; align-items: center; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px;
+  font-size: 14px; cursor: pointer; background: #fff;
+}
+.survey-opts label.on { border-color: var(--brand-2); background: #fff3e6; color: var(--brand-ink); font-weight: 700; }
+.survey-opts input { position: absolute; opacity: 0; pointer-events: none; }
+.survey-opts label:has(input:focus-visible) { outline: 3px solid var(--brand-1); outline-offset: 2px; }
+.survey textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: 14.5px; resize: vertical;
+}
+.survey-agree { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.survey-agree input { margin-top: 3px; flex: none; }
+.survey-err { margin: 10px 0 0; color: #b42318; font-size: 14px; }
+.survey-hint { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.survey-actions {
+  position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px;
+  margin: 14px -20px 0; padding: 12px 20px 16px; background: var(--bg); border-top: 1px solid var(--line);
+}
+.survey-actions button { border: 0; border-radius: 12px; padding: 12px 8px; font-size: 15px; font-weight: 700; }
+.survey-later { background: var(--surface); color: var(--muted); }
+.survey-send { background: var(--brand-2); color: #fff; }

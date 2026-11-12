@@ -17,27 +17,13 @@ import { TutorialAsk } from './components/TutorialAsk';
 import { switchFeedback, unlockAudio } from './feedback';
 import { track } from './track';
 import { appRoot } from './root';
+import { store } from './store';
+import { Survey, useSurveyProgress } from './components/Survey';
 
 const TUT_KEY = 'varilumi-tutorial-done';
 const TIPS_KEY = 'varilumi-tips-seen';
 /** lit areas during the tutorial: the picture (to see the result), the coach card, the button to press and the wall switch (pressing it works too) */
 const SPOT_TARGETS = ['.picture, .m-picture', '.coach', '.tw-frame'];
-const store = {
-  get(k: string) {
-    try {
-      return localStorage.getItem(k);
-    } catch {
-      return null;
-    }
-  },
-  set(k: string, v: string) {
-    try {
-      localStorage.setItem(k, v);
-    } catch {
-      /* storage unavailable */
-    }
-  },
-};
 
 const MOBILE_QUERY = '(max-width: 959px) and (orientation: portrait)';
 
@@ -89,6 +75,7 @@ export default function App() {
   }
 
   const [productData, setProducts] = useState<ProductData | null>(null);
+  const [progress, noteUse] = useSurveyProgress(); // unlocks the 體驗好禮 survey
   // first visit on this device: a welcome popup offers the 快切 / 慢切 lesson (start or skip)
   const [askTut, setAskTut] = useState(() => !store.get(TUT_KEY));
   const [tutStep, setTutStep] = useState<number | null>(null);
@@ -282,14 +269,17 @@ export default function App() {
   const userPress = useCallback(() => {
     stopDemo();
     press();
-  }, [stopDemo, press]);
+    noteUse(engine.current.options.functionId);
+  }, [stopDemo, press, noteUse]);
   const onQuick = () => {
     stopDemo();
     void runSequence(350);
+    noteUse(cfg.functionId);
   };
   const onSlow = () => {
     stopDemo();
     void runSequence(SLOW_GAP_MS);
+    noteUse(cfg.functionId);
   };
   useEffect(() => stopDemo(), [setup.key, stopDemo]);
   useEffect(() => {
@@ -495,7 +485,10 @@ export default function App() {
     </div>
   );
   const products = (
-    <ProductCards data={productData} fixture={fixture} fixtureName={setup.fixture.name} functionId={cfg.functionId} />
+    <>
+      <Survey progress={progress} />
+      <ProductCards data={productData} fixture={fixture} fixtureName={setup.fixture.name} functionId={cfg.functionId} />
+    </>
   );
   const footer = (
     <footer className="foot">
