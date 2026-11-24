@@ -18,7 +18,7 @@ export interface TutStep {
 const TOUR: TutStep[] = [
   { title: '這是模擬的房間：按開關，燈光會即時變化', doneOn: [], targets: ['.picture, .m-picture'] },
   {
-    title: '這裡選功能：調光型（四段、無段）只調亮度；調色型（三色一夜光、兩色、三色無段）還能換光色',
+    title: '這裡選功能：調光型（四段、無段）只調亮度；調色型（三色一夜光、兩色一調光、兩色、三色無段）還能換光色',
     doneOn: [],
     targets: ['.fn-cards, .fn-compact'],
   },
@@ -44,6 +44,8 @@ function handsOn(fn: FunctionId): TutStep[] {
       return [{ title: '快切＝關了馬上再開，換下一種光色', coach: 'quick', doneOn: ['step'] }, SLOW_STEP];
     case 'stepless':
       return [{ title: '快切＝關了馬上再開，燈會從 1% 慢慢變亮', coach: 'quick', doneOn: ['ramp-start'] }, STOP_STEP, SLOW_STEP];
+    case 'two-color-one-dim':
+      return [{ title: '快切＝關了馬上再開，換第二個色溫從 1% 慢慢變亮', coach: 'quick', doneOn: ['ramp-start'] }, STOP_STEP, SLOW_STEP];
     default: // 兩色 / 三色無段調光
       return [{ title: '快切＝關了馬上再開，換一種光色從 1% 慢慢變亮', coach: 'quick', doneOn: ['ramp-start'] }, STOP_STEP, SLOW_STEP];
   }
@@ -55,6 +57,7 @@ export type TipId = FunctionId | 'memory';
 export const TIPS: Partial<Record<TipId, { text: string; coach: CoachTarget; doneOn: EngineEvent[] }>> = {
   stepless: { text: '快切開始慢慢變亮，亮度剛好時再快切停住', coach: 'quick', doneOn: ['ramp-stop'] },
   'tri-color-night': { text: '快切依序換：白光 → 柔光 → 黃光 → 夜燈', coach: 'quick', doneOn: ['step'] },
+  'two-color-one-dim': { text: '慢切是第一個色溫 100% 全亮；快切換第二個色溫慢慢變亮，剛好時再快切停住', coach: 'quick', doneOn: ['ramp-stop'] },
   'two-color-stepless': { text: '每次快切換一種光色慢慢變亮，剛好時再快切停住', coach: 'quick', doneOn: ['ramp-stop'] },
   'three-color-stepless': { text: '每次快切換一種光色慢慢變亮，剛好時再快切停住', coach: 'quick', doneOn: ['ramp-stop'] },
   memory: { text: '記憶開了：關燈等 3 秒再開（慢切），看看會回到哪裡', coach: 'slow', doneOn: ['slow-memory'] },
@@ -69,6 +72,7 @@ export const DEMOS: Record<FunctionId, DemoAction[]> = {
   'four-step': [1000, 'quick', 1300, 'quick', 1300, 'quick', 1300, 'slow', 1800],
   stepless: [1000, 'quick', 3200, 'quick', 1800, 'slow', 1800],
   'tri-color-night': [1000, 'quick', 1300, 'quick', 1300, 'quick', 1300, 'slow', 1800],
+  'two-color-one-dim': [1000, 'quick', 2600, 'quick', 1300, 'quick', 3600, 'quick', 1500, 'slow', 1800],
   'two-color-stepless': [1000, 'quick', 2600, 'quick', 1300, 'quick', 3000, 'quick', 1800],
   'three-color-stepless': [1000, 'quick', 2600, 'quick', 1100, 'quick', 2600, 'quick', 1100, 'quick', 3000, 'quick', 1800],
 };
@@ -78,6 +82,7 @@ const ADJUST: Record<FunctionId, DemoAction[]> = {
   'four-step': ['quick'],
   'tri-color-night': ['quick'],
   stepless: ['quick', 2400, 'quick'],
+  'two-color-one-dim': ['quick', 2400, 'quick'],
   'two-color-stepless': ['quick', 2400, 'quick'],
   'three-color-stepless': ['quick', 2400, 'quick'],
 };

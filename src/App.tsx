@@ -18,7 +18,8 @@ import { switchFeedback, unlockAudio } from './feedback';
 import { track } from './track';
 import { appRoot } from './root';
 import { store } from './store';
-import { Survey, useSurveyProgress } from './components/Survey';
+import { useSurveyProgress } from './components/Survey';
+import { Campaign, CampaignPill } from './components/Campaign';
 
 const TUT_KEY = 'varilumi-tutorial-done';
 const TIPS_KEY = 'varilumi-tips-seen';
@@ -75,7 +76,7 @@ export default function App() {
   }
 
   const [productData, setProducts] = useState<ProductData | null>(null);
-  const [progress, noteUse] = useSurveyProgress(); // unlocks the 體驗好禮 survey
+  const [, noteUse] = useSurveyProgress(); // still counted, for the plugin survey (Survey.tsx) if it comes back
   // first visit on this device: a welcome popup offers the 快切 / 慢切 lesson (start or skip)
   const [askTut, setAskTut] = useState(() => !store.get(TUT_KEY));
   const [tutStep, setTutStep] = useState<number | null>(null);
@@ -444,8 +445,11 @@ export default function App() {
 
   const title = (
     <header className="lab-title">
-      <h1>飛利明 開關調光體驗館</h1>
-      <p>親自體驗，找到最適合你的燈光功能</p>
+      <div>
+        <h1>飛利明 開關調光體驗館</h1>
+        <p>親自體驗，找到最適合你的燈光功能</p>
+      </div>
+      {!learning && <CampaignPill />}
     </header>
   );
 
@@ -486,14 +490,14 @@ export default function App() {
   );
   const products = (
     <>
-      <Survey progress={progress} />
+      <Campaign />
       <ProductCards data={productData} fixture={fixture} fixtureName={setup.fixture.name} functionId={cfg.functionId} />
     </>
   );
   const footer = (
     <footer className="foot">
       <p>
-        想了解更多功能（兩色一調光、四色燈、客製分區點燈…）請看
+        想了解更多功能（四色燈、客製分區點燈…）請看
         <a href="https://www.varilumi.com/function-selection-guide/" target="_blank" rel="noopener">
           開關調光燈選購攻略
         </a>

@@ -11,7 +11,7 @@ export interface GroupConfig {
   functionId: FunctionId;
   kelvin: number;
   memory: boolean;
-  /** 兩色無段調光: the chosen pair of colours */
+  /** 兩色一調光 / 兩色無段調光: the chosen pair of colours */
   colors?: number[];
 }
 
@@ -35,7 +35,9 @@ export function eventText(state: LightState, cfg: GroupConfig): string {
     case 'step':
       return `快切 → 跳到下一段：${now}`;
     case 'ramp-start':
-      return multi
+      return def.fixedFirst
+        ? `快切 → 換${kelvinLabel(state.kelvin)}，從夜燈開始慢慢變亮…亮度剛好時再快切停住`
+        : multi
         ? `快切 → ${kelvinLabel(state.kelvin)}從夜燈開始慢慢變亮…亮度剛好時再快切停住`
         : '快切 → 從夜燈開始慢慢變亮…亮度剛好時再連按兩下';
     case 'ramp-stop':
@@ -137,11 +139,12 @@ export function StatusView({ cfg, state }: { cfg: GroupConfig; state: LightState
         {def.mode === 'multi-stepless' && (
           <ol className="steps colors" aria-label="光色">
             {Array.from({ length: state.colorCount }, (_, i) => i).map((i) => {
-              const k = (cfg.colors && def.id === 'two-color-stepless' ? cfg.colors : def.colors!)[i];
+              const k = (cfg.colors && def.pairSelectable ? cfg.colors : def.colors!)[i];
               return (
                 <li key={i} className={state.switchOn && i === state.colorIndex ? 'cur' : ''}>
                   <span className="dot" style={{ background: kelvinSwatch(k) }} />
                   {kelvinLabel(k)}
+                  {def.fixedFirst && <small className="role">{i === 0 ? '100% 全亮' : '可無段調光'}</small>}
                   {state.switchOn && !state.ramping && i === state.nextColorIndex && i !== state.colorIndex && <em className="next">下次快切</em>}
                 </li>
               );
@@ -261,27 +264,7 @@ export function MemoryToggle({ cfg, onConfig, onDemo }: { cfg: GroupConfig; onCo
 /** Colour choice, overlaid on the picture's top-left corner (only for functions where it can be chosen). */
 export function ColorPick({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void }) {
   const def = FUNCTIONS[cfg.functionId];
-  if (def.id === 'two-color-stepless') {
-    const cur = (cfg.colors ?? def.colors!).join(',');
-    return (
-      <div className="color-pick" role="radiogroup" aria-label="兩色組合">
-        <span className="color-pick-label">光色</span>
-        {COLOR_PAIRS.map((p) => {
-          const on = p.colors.join(',') === cur;
-          return (
-            <button key={p.label} type="button" role="radio" aria-checked={on} aria-label={p.label} title={p.label} className={on ? 'active' : ''} onClick={() => {
-                track('color_change', { color: p.label });
-                onConfig({ colors: p.colors });
-              }}>
-              {p.colors.map((k) => (
-                <i key={k} style={{ background: kelvinSwatch(k) }} />
-              ))}
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
+  if (def.pairSelectable) return <PairPick cfg={cfg} onConfig={onConfig} />;
   if (!def.colorSelectable) return null;
   return (
     <div className="color-pick" role="radiogroup" aria-label="光色">
@@ -297,6 +280,64 @@ export function ColorPick({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: P
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** What a colour pair does, in words: 兩色一調光 「白光全亮・黃光可調」, 兩色無段 「先白光、再黃光」. */
+function pairText(fixedFirst: boolean | undefined, colors: number[]): string {
+  const [a, b] = colors.map(kelvinLabel);
+  return fixedFirst ? `${a}全亮・${b}可調` : `先${a}、再${b}`;
+}
+
+/**
+ * 兩色組合 (six, order matters): a small button with the current pair; tapping it lists all six in words.
+ * Six swatch buttons would not fit beside 記憶功能 on a phone, and dots alone don't say which colour is first.
+ */
+function PairPick({ cfg, onConfig }: { cfg: GroupConfig; onConfig: (p: Partial<GroupConfig>) => void }) {
+  const def = FUNCTIONS[cfg.functionId];
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => {
+      if (!wrap.current || !e.composedPath().includes(wrap.current)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
+  const colors = cfg.colors ?? def.colors!;
+  const cur = colors.join(',');
+  return (
+    <div className="color-pick pair-pick" ref={wrap}>
+      <button type="button" className="pair-cur" aria-haspopup="true" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="color-pick-label">光色</span>
+        {colors.map((k, i) => (
+          <i key={i} style={{ background: kelvinSwatch(k) }} />
+        ))}
+        {pairText(def.fixedFirst, colors)}
+        <span className="pair-caret" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="pair-pop" role="radiogroup" aria-label="兩色組合">
+          <small>{def.fixedFirst ? '第一個色溫 100% 全亮，第二個色溫可無段調光 1～100%' : '慢切先亮第一個色溫，兩個色溫都能無段調光 1～100%'}</small>
+          {COLOR_PAIRS.map((p) => {
+            const on = p.colors.join(',') === cur;
+            return (
+              <button key={p.label} type="button" role="radio" aria-checked={on} className={on ? 'active' : ''} onClick={() => {
+                  track('color_change', { color: p.label });
+                  onConfig({ colors: p.colors });
+                  setOpen(false);
+                }}>
+                {p.colors.map((k, i) => (
+                  <i key={i} style={{ background: kelvinSwatch(k) }} />
+                ))}
+                {pairText(def.fixedFirst, p.colors)}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

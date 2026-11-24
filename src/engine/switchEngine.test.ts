@@ -326,3 +326,59 @@ describe('configure', () => {
     expect(e.state(300).kelvin).toBe(6000);
   });
 });
+
+describe('兩色一調光', () => {
+  it('慢切 is always the first colour at 100%; every 快切 ramps the second colour', () => {
+    const e = make('two-color-one-dim');
+    e.press(0); // first on: white 100%
+    expect(e.state(0).kelvin).toBe(6000);
+    expect(e.state(0).level).toBe(1);
+    expect(e.state(0).nextColorIndex).toBe(1);
+    e.press(100); e.press(300); // quick → yellow ramps from the night light
+    expect(e.state(300).kelvin).toBe(3000);
+    expect(e.state(300).ramping).toBe(true);
+    expect(e.state(300).level).toBe(0.01);
+    e.press(2300); e.press(2400); // quick → stop yellow
+    expect(e.state(2400).ramping).toBe(false);
+    expect(e.state(2400).level).toBeCloseTo(rampLevel(2000), 6);
+    e.press(2500); e.press(2600); // quick again → yellow re-ramps (never white)
+    expect(e.state(2600).kelvin).toBe(3000);
+    expect(e.state(2600).ramping).toBe(true);
+    e.press(4000); // off
+    e.press(8000); // slow → white 100%
+    const s = e.state(8000);
+    expect(s.event).toBe('slow-default');
+    expect(s.kelvin).toBe(6000);
+    expect(s.level).toBe(1);
+  });
+
+  it('an unstopped ramp stays on the second colour at 100%', () => {
+    const e = make('two-color-one-dim');
+    e.press(0); e.press(100); e.press(300);
+    const s = e.state(300 + RAMP_MS + 500);
+    expect(s.kelvin).toBe(3000);
+    expect(s.level).toBe(1);
+    expect(s.nextColorIndex).toBe(1);
+  });
+
+  it('with memory 慢切 comes back to the second colour where it was stopped', () => {
+    const e = make('two-color-one-dim', true);
+    e.press(0); e.press(100); e.press(300); // ramp yellow
+    e.press(3300); e.press(3400); // stop
+    const kept = e.state(3400).level;
+    e.press(3500);
+    e.press(8000);
+    const s = e.state(8000);
+    expect(s.event).toBe('slow-memory');
+    expect(s.kelvin).toBe(3000);
+    expect(s.level).toBeCloseTo(kept, 6);
+  });
+
+  it('uses the chosen colour pair', () => {
+    const e = new SwitchEngine({ functionId: 'two-color-one-dim', memory: false, kelvin: 4000, colors: [6000, 4000] });
+    e.press(0);
+    expect(e.state(0).kelvin).toBe(6000);
+    e.press(100); e.press(300);
+    expect(e.state(300).kelvin).toBe(4000);
+  });
+});

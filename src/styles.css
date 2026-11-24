@@ -362,6 +362,42 @@ a { color: var(--brand-ink); }
 .crumbs-row { display: flex; align-items: center; gap: 8px; }
 .crumbs-row .crumbs { flex: 1; min-width: 0; }
 .crumbs-row .help { flex: none; white-space: nowrap; padding: 6px 4px; }
+/* 體驗好禮: top right, beside the title */
+.campaign-pill {
+  flex: none; display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; text-decoration: none;
+  padding: 7px 14px 7px 7px; border-radius: 999px; color: var(--brand-ink);
+  background: linear-gradient(100deg, #fff8e4, #ffeedd); border: 1px solid #f6d39a;
+  box-shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 6px 16px rgba(240, 138, 60, 0.14);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.campaign-pill:hover { transform: translateY(-1px); box-shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 10px 22px rgba(240, 138, 60, 0.22); }
+.campaign-pill:active { transform: none; }
+.campaign-pill:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; }
+.cp-icon {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  color: #fff; background: var(--grad);
+}
+.cp-icon svg { width: 18px; height: 18px; }
+.cp-text { display: grid; line-height: 1.2; }
+.cp-text b { font-size: 14.5px; color: var(--ink); letter-spacing: 0.02em; }
+.cp-text small { font-size: 11.5px; color: var(--brand-ink); margin-top: 1px; }
+.cp-go { font-size: 20px; line-height: 1; color: var(--brand-2); margin-left: -2px; transition: transform 0.15s ease; }
+.campaign-pill:hover .cp-go { transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { .campaign-pill, .cp-go { transition: none; } }
+/* tablets / phones: one line, smaller */
+@media (max-width: 760px) {
+  .campaign-pill { gap: 8px; padding: 5px 12px 5px 5px; }
+  .cp-icon { width: 28px; height: 28px; }
+  .cp-icon svg { width: 15px; height: 15px; }
+  .cp-text b { font-size: 13.5px; }
+}
+@media (max-width: 480px) {
+  .cp-text small, .cp-go { display: none; }
+  .campaign-pill { gap: 6px; padding: 4px 11px 4px 4px; }
+  .cp-icon { width: 26px; height: 26px; }
+  .cp-text b { font-size: 13px; }
+}
+@media (max-width: 400px) { .cp-long { display: none; } }
 .app:not(.is-mobile) { padding-top: 12px; }
 /* phones: the sheet is position:fixed, so its wrapper must not create a stacking context under the dock */
 .is-mobile .crumbs-wrap { position: static; z-index: auto; padding: 0; margin: 0; background: none; }
@@ -492,6 +528,18 @@ a { color: var(--brand-ink); }
 .color-pick button.active { background: #fff; color: var(--ink); font-weight: 700; }
 .color-pick i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); }
 .color-pick button i + i { margin-left: -8px; }
+/* 兩色組合: current pair + a list of all six */
+.pair-pick { z-index: 8; padding: 0; }
+.pair-pick .pair-cur { padding: 6px 12px 6px 4px; color: #fff; }
+.pair-pick .pair-cur .color-pick-label { padding-right: 2px; }
+.pair-caret { font-size: 10px; opacity: 0.8; }
+.pair-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; display: grid; gap: 2px; padding: 8px; min-width: 190px;
+  border-radius: 14px; background: rgba(20, 16, 12, 0.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3); animation: pop 0.2s ease-out;
+}
+.pair-pop small { color: rgba(255, 255, 255, 0.75); font-size: 11.5px; padding: 0 6px 4px; }
+.color-pick .pair-pop button { justify-content: flex-start; padding: 7px 10px; border-radius: 10px; }
 
 /* animated demo */
 .demo-btn { display: block; margin: 8px auto 0; font-weight: 600; font-size: 13px; }
@@ -585,6 +633,7 @@ a { color: var(--brand-ink); }
 .steps.colors li { position: relative; }
 .steps .next { font-style: normal; font-size: 10.5px; margin-left: 4px; padding: 0 5px; border-radius: 6px; background: #fff1d6; color: var(--brand-ink); }
 .steps li.cur .next { display: none; }
+.steps .role { font-size: 10.5px; margin-left: 4px; opacity: 0.7; }
 .fn-anim.multi { gap: 3px; }
 .fn-anim .mini-glide { width: 26px; height: 8px; border-radius: 999px; background: #e9e2d7; overflow: hidden; display: inline-block; }
 .fn-anim .mini-glide > span {
@@ -710,12 +759,13 @@ a { color: var(--brand-ink); }
 .tutorial:not(.no-dots) .tut-actions { grid-column: 2; justify-content: flex-end; }
 
 /* page title */
-.lab-title { padding: 16px 0 6px; }
+.lab-title { padding: 16px 0 6px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lab-title h1 { margin: 0; font-size: 24px; letter-spacing: 0.04em; line-height: 1.3; }
 .lab-title p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; letter-spacing: 0.06em; }
 .is-mobile .lab-title { padding: 12px 0 10px; }
-.is-mobile .lab-title h1 { font-size: 19px; }
-.is-mobile .lab-title p { font-size: 12.5px; }
+.is-mobile .lab-title h1 { font-size: clamp(16px, 4.9vw, 19px); }
+.is-mobile .lab-title p { font-size: clamp(11px, 3.1vw, 12.5px); }
+.lab-title > div { min-width: 0; }
 
 /* 體驗好禮: survey card above the products, and the survey dialog */
 .survey-card {
@@ -728,6 +778,7 @@ a { color: var(--brand-ink); }
 .survey-card p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
 .survey-meter { margin-top: 8px; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .survey-meter i { display: block; height: 100%; background: var(--grad); border-radius: inherit; transition: width 0.3s; }
+.survey-go { text-align: center; text-decoration: none; }
 .survey-go { flex: none; border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; color: #fff; background: var(--brand-2); }
 .survey-code { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .survey-code code {

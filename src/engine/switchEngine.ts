@@ -26,7 +26,7 @@ export interface EngineOptions {
   memory: boolean;
   /** fixed colour temperature for 調光型 functions */
   kelvin: number;
-  /** colours for 兩色無段調光 (two of 白/柔/黃); defaults to the function's own list */
+  /** colours for 兩色一調光 / 兩色無段調光 (two of 白/柔/黃); defaults to the function's own list */
   colors?: number[];
 }
 
@@ -136,8 +136,13 @@ export class SwitchEngine {
   /** Colours a stepless function works with: one fixed colour, or the 兩色/三色 list. */
   private get colors(): number[] {
     const d = this.def;
-    if (d.mode === 'multi-stepless') return this.opts.colors && d.id === 'two-color-stepless' ? this.opts.colors : d.colors!;
+    if (d.mode === 'multi-stepless') return this.opts.colors && d.pairSelectable ? this.opts.colors : d.colors!;
     return [this.opts.kelvin];
+  }
+
+  /** The colour the next 快切 ramps after this one: the next in turn, or always the second for 兩色一調光. */
+  private after(i: number): number {
+    return this.def.fixedFirst ? 1 : (i + 1) % this.colors.length;
   }
 
   /** Settle a ramp that ran to completion without being stopped. */
@@ -148,7 +153,7 @@ export class SwitchEngine {
       const doneAt = this.rampStart + RAMP_MS;
       this.rampStart = null;
       this.held = 1;
-      this.nextColor = (this.colorIdx + 1) % this.colors.length;
+      this.nextColor = this.after(this.colorIdx);
       if (this.switchOn) this.event = 'ramp-done';
       if (this.memOn) {
         this.memLevel = 1;
@@ -186,13 +191,12 @@ export class SwitchEngine {
       if (this.memOn) this.memStep = this.stepIndex;
     } else {
       // 無段調光 (one colour) and 兩色/三色無段調光 (each new ramp moves on to the next colour)
-      const n = this.colors.length;
       const wasRamping = this.rampStart !== null && this.offAt !== null;
       if (quick && wasRamping) {
         // stop the ramp at the level it had reached when the switch went off
         this.held = rampLevel(this.offAt! - this.rampStart!);
         this.rampStart = null;
-        this.nextColor = (this.colorIdx + 1) % n;
+        this.nextColor = this.after(this.colorIdx);
         if (this.memOn) {
           this.memLevel = this.held;
           this.memColor = this.colorIdx;
@@ -206,7 +210,8 @@ export class SwitchEngine {
         this.rampStart = null;
         this.held = this.memOn ? this.memLevel : 1;
         this.colorIdx = this.memOn ? this.memColor : 0;
-        this.nextColor = this.colorIdx; // the first 快切 re-tunes the colour that is on
+        // the first 快切 re-tunes the colour that is on (兩色一調光: always the second colour)
+        this.nextColor = this.def.fixedFirst ? 1 : this.colorIdx;
         this.event = action === 'first' ? 'first' : this.memOn ? 'slow-memory' : 'slow-default';
       }
     }

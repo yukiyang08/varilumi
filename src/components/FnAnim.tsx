@@ -7,6 +7,18 @@ import { kelvinSwatch } from './ControlPanel';
  */
 export function FnAnim({ id }: { id: FunctionId }) {
   const def = FUNCTIONS[id];
+  if (def.fixedFirst) {
+    // first colour: always full; second colour: glides
+    const [full, dim] = def.colors!;
+    return (
+      <span className="fn-anim multi" aria-hidden="true" style={{ ['--n' as string]: 1 }}>
+        <span className="bulb" style={{ ['--c' as string]: kelvinSwatch(full), opacity: 1, animation: 'none' }} />
+        <span className="mini-glide" style={{ ['--i' as string]: 0, ['--c' as string]: kelvinSwatch(dim) }}>
+          <span />
+        </span>
+      </span>
+    );
+  }
   if (def.mode === 'multi-stepless') {
     const n = def.colors!.length;
     return (

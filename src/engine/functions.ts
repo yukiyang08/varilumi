@@ -3,7 +3,7 @@
  * (https://www.varilumi.com/function-selection-guide/).
  */
 
-export type FunctionId = 'four-step' | 'stepless' | 'tri-color-night' | 'two-color-stepless' | 'three-color-stepless';
+export type FunctionId = 'four-step' | 'stepless' | 'tri-color-night' | 'two-color-one-dim' | 'two-color-stepless' | 'three-color-stepless';
 
 export interface Step {
   /** 0..1 brightness */
@@ -31,6 +31,13 @@ export interface FunctionDef {
   steps: Step[];
   /** colours a multi-stepless function ramps through, in order */
   colors?: number[];
+  /**
+   * 兩色一調光: the first colour is only ever on at 100% (慢切), and every 快切 ramps the second colour.
+   * Otherwise each new ramp moves on to the next colour.
+   */
+  fixedFirst?: boolean;
+  /** the visitor picks which two colours (COLOR_PAIRS) */
+  pairSelectable?: boolean;
   /** whether the customer picks one fixed colour temperature (調光型) */
   colorSelectable: boolean;
   summary: string;
@@ -93,6 +100,21 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     colorSelectable: false,
     summary: '白、柔、黃三種色溫全亮，第四段是黃光小夜燈。',
   },
+  'two-color-one-dim': {
+    id: 'two-color-one-dim',
+    name: '兩色一調光',
+    plainName: '兩色一調光',
+    need: '一種光色全亮，另一種光色調亮度',
+    needDesc: '第一個色溫 100% 全亮；第二個色溫可無段調光 1～100%，停在剛好的亮度',
+    family: '調色型',
+    mode: 'multi-stepless',
+    colors: [KELVIN.white, KELVIN.yellow],
+    fixedFirst: true,
+    pairSelectable: true,
+    steps: [{ level: 1, kelvin: KELVIN.white, label: '白光 100%' }],
+    colorSelectable: false,
+    summary: '兩個色溫自由選定：第一個色溫 100% 全亮，第二個色溫可無段調光 1～100%。',
+  },
   'two-color-stepless': {
     id: 'two-color-stepless',
     name: '兩色無段調光',
@@ -102,6 +124,7 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
     family: '調色型',
     mode: 'multi-stepless',
     colors: [KELVIN.white, KELVIN.yellow],
+    pairSelectable: true,
     steps: [{ level: 1, kelvin: KELVIN.white, label: '白光 100%' }],
     colorSelectable: false,
     summary: '兩種色溫自由選，每一色都能無段調光。',
@@ -121,14 +144,21 @@ export const FUNCTIONS: Record<FunctionId, FunctionDef> = {
   },
 };
 
-/** Two-colour pairs a visitor can pick for 兩色無段調光 (官網：兩色溫自由選擇). */
+/**
+ * Colour pairs for 兩色一調光 / 兩色無段調光, in order (the order form's 色溫選擇: 白柔 白黃 柔白 柔黃 黃白 黃柔).
+ * The first colour is what 慢切 turns on; for 兩色一調光 it is the one at 100%, the second is the one that dims.
+ */
+const SHORT: Record<number, string> = { [KELVIN.white]: '白', [KELVIN.soft]: '柔', [KELVIN.yellow]: '黃' };
 export const COLOR_PAIRS: { label: string; colors: number[] }[] = [
-  { label: '白光＋黃光', colors: [KELVIN.white, KELVIN.yellow] },
-  { label: '白光＋柔光', colors: [KELVIN.white, KELVIN.soft] },
-  { label: '柔光＋黃光', colors: [KELVIN.soft, KELVIN.yellow] },
-];
+  [KELVIN.white, KELVIN.soft],
+  [KELVIN.white, KELVIN.yellow],
+  [KELVIN.soft, KELVIN.white],
+  [KELVIN.soft, KELVIN.yellow],
+  [KELVIN.yellow, KELVIN.white],
+  [KELVIN.yellow, KELVIN.soft],
+].map((colors) => ({ label: colors.map((k) => SHORT[k]).join(''), colors }));
 
-export const FUNCTION_ORDER: FunctionId[] = ['four-step', 'stepless', 'tri-color-night', 'two-color-stepless', 'three-color-stepless'];
+export const FUNCTION_ORDER: FunctionId[] = ['four-step', 'stepless', 'tri-color-night', 'two-color-one-dim', 'two-color-stepless', 'three-color-stepless'];
 
 /** Timing rules (ms). The guide says quick < 2s and slow > 3s; 2–3s counts as slow here. */
 export const QUICK_MS = 2000;
