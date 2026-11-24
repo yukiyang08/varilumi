@@ -20,9 +20,24 @@ const MAX_LAYERS = 4;
 const BASE_FRAC = 0.012;
 /** Mean scene luminance that "all lights on" is normalised to, so every room shows at a similar brightness. */
 const TARGET_LUM = 0.28; // was 0.42: full brightness read as washed out, flat walls and ceiling
-/** How far the eye opens up as the room dims: exposure × (full / current)^ADAPT_EXP, at most ADAPT_MAX. */
-const ADAPT_EXP = 0.69;
+/**
+ * How bright the picture reads, as the room dims: on a log-log plot of picture vs lamp brightness, the slope
+ * is ADAPT_HI near 100% and eases down to ADAPT_LO toward 1% (the eye adapts more the darker the room).
+ * A single slope of 0.31 (exposure × (full/current)^0.69) kept 1% right but made 50% → 100% look almost the
+ * same; this keeps the 1% night light exactly as before and spreads the top half out about twice as far.
+ */
+const ADAPT_HI = 0.6;
+const ADAPT_LO = 0.12;
 const ADAPT_MAX = 30;
+
+/** Exposure boost for a room at fraction x (0..1] of its full light. */
+export function adaptation(x: number): number {
+  if (x >= 1) return 1;
+  const u = Math.min(Math.log(1 / Math.max(x, 1e-4)) / Math.log(100), 1.5); // 0 at 100%, 1 at 1%
+  const integral = ADAPT_LO * u + ((ADAPT_HI - ADAPT_LO) * (1 - Math.pow(1 - u, 3))) / 3;
+  const picture = Math.exp(-integral * Math.log(100)); // relative picture brightness
+  return Math.min(Math.max(picture / x, 1), ADAPT_MAX);
+}
 
 const VS = `
 attribute vec2 p;
@@ -192,7 +207,7 @@ export class Compositor {
     this.names.forEach((n, i) => (cur += this.weights[i] * (L[n]?.meanLum ?? 0)));
     // normalise "all on" to TARGET_LUM, then open up partially as the room gets darker
     const norm = Math.pow(TARGET_LUM / ref, 0.85);
-    const adapt = Math.min(Math.max(Math.pow(ref / Math.max(cur, 1e-4), ADAPT_EXP), 1), ADAPT_MAX);
+    const adapt = adaptation(cur / ref);
     return norm * adapt;
   }
 
